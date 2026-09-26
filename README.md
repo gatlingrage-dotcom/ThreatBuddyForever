@@ -1,4 +1,4 @@
-# 🚥 ThreatBuddyForever (V2.0 - Ultimate Edition)
+# 🚥 ThreatBuddyForever
 
 **ThreatBuddyForever** is a smart, ultra-lightweight multi-target threat monitoring addon designed specifically for the **WoW Forever / Classic (Vanilla)** game client. 
 

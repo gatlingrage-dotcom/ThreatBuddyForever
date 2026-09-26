@@ -1,8 +1,8 @@
 # 🚥 ThreatBuddyForever (V2.0 - Ultimate Edition)
 
-**ThreatBuddyForever** is a smart, ultra-lightweight multi-target threat monitoring addon designed specifically for the **WoW Forever / Classic (Vanilla)** game client [INDEX]. 
+**ThreatBuddyForever** is a smart, ultra-lightweight multi-target threat monitoring addon designed specifically for the **WoW Forever / Classic (Vanilla)** game client. 
 
-Instead of forcing you to stare at complex numerical tables, this addon attaches a **dynamic, glowing circular traffic light** directly to the right side of floating enemy health bars (**Nameplates**) [INDEX]. This allows you to manage threat across massive AoE pulls with a single split-second glance [INDEX].
+Instead of forcing you to stare at complex numerical tables, this addon attaches a **dynamic, glowing circular traffic light** directly to the right side of floating enemy health bars (**Nameplates**). This allows you to manage threat across massive AoE pulls with a single split-second glance.
 
 ---
 

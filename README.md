@@ -55,7 +55,7 @@ Manage your addon at any time using these chat commands:
 
 ## 📝 Changelog
 
-### Version 2.0.0 (Ultimate Edition)
+### Version 2.0.0
 * **Added Tank/DPS Auto-Inversion:** Colors adapt automatically based on active Tank stances/forms.
 * **Added Cyan Neon Taunt Alert:** Visual and textual warning when a mob is spottet/taunted.
 * **Added Per-Character Profiles:** Independent database tracking for separate characters.

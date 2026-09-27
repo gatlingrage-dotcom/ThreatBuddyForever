@@ -56,6 +56,23 @@ Manage your addon at any time using these chat commands:
 ## 📝 Changelog
 # Changelog - ThreatBuddyForever
 
+
+### Version 2.1.1
+## - 2026-09-27
+## 🛑 The "Third-Party Combat Pop-up" Fix
+### The Problem
+* In previous iterations, the addon scanned active nameplates using `UnitAffectingCombat(unit)`. 
+* `UnitAffectingCombat` evaluates whether a monster is engaged in combat with **anyone** in the game world.
+* If an unrelated background player pulled an enemy nearby, that enemy's combat flag shifted to `true`. The addon mistook this for the player's battle and spawned threat widgets over the enemy nameplate, even if the player and their party were standing completely idle out of combat.
+
+### The Architectural Solution
+We implemented a strict multi-layered **Group Engagement Filter Engine** to block unauthorized nameplate tracking.
+
+1. **Direct Threat Verification:** Before drawing a widget, the addon checks `UnitThreatSituation("player", unit)`. If this returns `nil`, you have no footprint on that mob's threat table, and it is safely ignored.
+2. **Pet Threat Verification:** Added a fallback check for class pets (`UnitThreatSituation("pet", unit)`), ensuring active hunter/warlock targets populate widgets cleanly.
+3. **Cross-Group Target Checking:** If you are running inside a Group or Raid framework, the addon scans the target tokens (`unit.."target"`). If the mob is actively attacking an interface group index token (`party1` to `party4`, or `raid1` to `raid40`), it is instantly flagged as part of your team's pull.
+4. **Ticker Value Reset Handling:** When widgets are recycled via `RecycleSignalWidget`, their dynamic simulation counters (`frame.combatStartTime` and `frame.currentThreatDisplayValue`) are hard-wiped. This prevents memory residue from leaking old percentage animations onto brand-new monster frames.
+
 ### Version 2.1.0
 ## - 2026-09-27
 ### Fixed

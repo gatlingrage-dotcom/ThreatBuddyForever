@@ -71,15 +71,11 @@ local function SafeGetText(key)
     return ""
 end
 
--- ===========================================================================
--- HELPER DE VERIFICAÇÃO DE COMBATE DE GRUPO (V2.1)
--- ===========================================================================
+-- Helper de verificação de combate de grupo (V2.1)
 local function IsUnitEngagedWithMyGroup(unit)
-    -- Se você ou seu pet tiverem qualquer nível de ameaça (0 a 3), o mob pertence ao seu combate
     if UnitThreatSituation("player", unit) then return true end
     if UnitExists("pet") and UnitThreatSituation("pet", unit) then return true end
     
-    -- Se estiver em grupo, verifica se o alvo atual do mob está atacando alguém do seu grupo
     if IsInGroup() or IsInRaid() then
         local targetToken = unit .. "target"
         if UnitExists(targetToken) then
@@ -94,9 +90,50 @@ local function IsUnitEngagedWithMyGroup(unit)
             end
         end
     end
-    
     return false
 end
+
+-- ===========================================================================
+-- HELPER INTERNO DE ESCALONAMENTO DE AMEAÇA FLUIDA (V2.2)
+-- ===========================================================================
+local function EstimateFluidOffTargetThreat(unit, currentStatus)
+    if currentStatus == 3 then return 100
+    elseif currentStatus == 2 then return 90
+    elseif currentStatus == 1 then return 75
+    end
+
+    local highestGroupStatus = 0
+    if UnitExists("pet") then
+        highestGroupStatus = math.max(highestGroupStatus, UnitThreatSituation("pet", unit) or 0)
+    end
+    
+    if IsInGroup() or IsInRaid() then
+        for i = 1, 4 do
+            if UnitExists("party" .. i) then
+                highestGroupStatus = math.max(highestGroupStatus, UnitThreatSituation("party" .. i) or 0)
+            end
+            if UnitExists("partypet" .. i) then
+                highestGroupStatus = math.max(highestGroupStatus, UnitThreatSituation("partypet" .. i) or 0)
+            end
+        end
+        if IsInRaid() then
+            for i = 1, 40 do
+                if UnitExists("raid" .. i) then
+                    highestGroupStatus = math.max(highestGroupStatus, UnitThreatSituation("raid" .. i) or 0)
+                end
+            end
+        end
+    end
+
+    if highestGroupStatus == 3 then
+        return nil -- Avança para a curva de tempo contínua de 12s até 72%
+    elseif highestGroupStatus == 2 or highestGroupStatus == 1 then
+        return 55 
+    end
+
+    return 20 
+end
+
 
 local function CreateNewSignalWidget()
     if #widgetPool > 0 then
@@ -133,6 +170,9 @@ local function RecycleSignalWidget(frame)
     table.insert(widgetPool, frame)
 end
 
+-- ===========================================================================
+-- ATUALIZAÇÃO PROCESSADOR DE AMEAÇA (V2.2 FLUID RANGE INTERPOLATOR)
+-- ===========================================================================
 UpdateSingleWidgetData = function(frame, unit)
     if not UnitExists(unit) or UnitIsDead(unit) or not UnitCanAttack("player", unit) then
         frame:Hide() return
@@ -143,7 +183,7 @@ UpdateSingleWidgetData = function(frame, unit)
     local displayColor = activeTheme.colors.good
     local showGlowEffect = false
 
-    -- SOLUÇÃO DEFINITIVA DO TAUNT (CLASSIC BYPASS):
+    -- DEBUFF TAUNT PARSER (CLASSIC COMPATIBLE):
     local isTaunted = false
     if type(UnitDebuff) == "function" then
         pcall(function()
@@ -204,25 +244,17 @@ UpdateSingleWidgetData = function(frame, unit)
     end
 
     if not parsedPercentSuccessfully then
-        if status == 3 then
-            targetPercent = 100
-        elseif status == 2 then
-            targetPercent = 90
-        elseif status == 1 then
-            targetPercent = 75
+        local estimatedBase = EstimateFluidOffTargetThreat(unit, status)
+        if estimatedBase then
+            targetPercent = estimatedBase
         else
             local now = GetTime()
-            if IsUnitEngagedWithMyGroup(unit) then
-                if not frame.combatStartTime then
-                    frame.combatStartTime = now
-                end
-                local duration = now - frame.combatStartTime
-                local timeFactor = math.min(duration / 8, 1)
-                targetPercent = math.floor(15 + (timeFactor * 40))
-            else
-                frame.combatStartTime = nil
-                targetPercent = 0
+            if not frame.combatStartTime then
+                frame.combatStartTime = now
             end
+            local duration = now - frame.combatStartTime
+            local timeFactor = math.min(duration / 12, 1)
+            targetPercent = math.floor(15 + (timeFactor * 57)) -- Curva de aceleração contínua até 72%
         end
     end
 
@@ -232,7 +264,7 @@ UpdateSingleWidgetData = function(frame, unit)
 
     local diff = targetPercent - frame.currentThreatDisplayValue
     if math.abs(diff) > 0.5 then
-        frame.currentThreatDisplayValue = frame.currentThreatDisplayValue + (diff * 0.18)
+        frame.currentThreatDisplayValue = frame.currentThreatDisplayValue + (diff * 0.12) -- Interpolação estável dígito por dígito
     else
         frame.currentThreatDisplayValue = targetPercent
     end
@@ -295,6 +327,9 @@ UpdateSingleWidgetData = function(frame, unit)
     if not frame:IsShown() then frame:Show() end
 end
 
+-- ===========================================================================
+-- LOOP SCANNER DE NAMEPLATES (FIXED SOLO HIDING OVERRIDE)
+-- ===========================================================================
 local C_NamePlate_GetNamePlates = C_NamePlate.GetNamePlates
 local C_NamePlate_GetNamePlateForUnit = C_NamePlate.GetNamePlateForUnit
 local UnitExists, UnitIsDead, UnitCanAttack = UnitExists, UnitIsDead, UnitCanAttack
@@ -303,8 +338,9 @@ local InCombatLockdown, IsInGroup, IsInRaid = InCombatLockdown, IsInGroup, IsInR
 function TTP_RefreshAllNameplates()
     local currentDB = addonTable.GetDB()
     
-    if not InCombatLockdown() and currentDB.hideWhileSolo and not IsInGroup() and not IsInRaid() then
-        if not (currentDB.showSoloWithPet and UnitExists("pet") and not UnitIsDead("pet")) then
+    if currentDB.hideWhileSolo and not IsInGroup() and not IsInRaid() then
+        local allowSoloWithPet = currentDB.showSoloWithPet and UnitExists("pet") and not UnitIsDead("pet")
+        if not allowSoloWithPet then
             for unit, frame in pairs(activeWidgets) do RecycleSignalWidget(frame) activeWidgets[unit] = nil end
             return
         end
@@ -316,9 +352,7 @@ function TTP_RefreshAllNameplates()
         if not nameplate:IsForbidden() then
             local unit = nameplate.namePlateUnitToken or (nameplate.UnitFrame and nameplate.UnitFrame.unit)
             
-            -- FILTRO V2.1: Valida se o monstro pertence ao seu grupo/combate antes de desenhar
             if unit and UnitExists(unit) and not UnitIsDead(unit) and UnitCanAttack("player", unit) and IsUnitEngagedWithMyGroup(unit) then
-                
                 local skipMob = false
                 if currentDB.filterTrivial then
                     if UnitClassification(unit) == "trivial" then
@@ -358,11 +392,13 @@ function TTP_RefreshAllNameplates()
     end
 end
 
+-- ===========================================================================
+-- MOTOR DE EXECUÇÃO EVENTOS E TIMERS
+-- ===========================================================================
 local elapsedTimer, glowAlpha, glowExpanding = 0, 0, true
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-eventFrame:RegisterEvent("UNIT_THREAT_LIST_UPDATE")
 eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
 
@@ -414,17 +450,6 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         wipe(soundCooldowns)
     elseif (event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED") then
         TTP_RefreshAllNameplates()
-    elseif event == "UNIT_THREAT_LIST_UPDATE" and arg1 then
-        local currentDB = addonTable.GetDB()
-        if currentDB and currentDB.enableSound and InCombatLockdown() and not IsPlayerTank() then
-            if (UnitThreatSituation("player", arg1) or 0) == 3 then
-                local now = GetTime()
-                if not soundCooldowns[arg1] or (now - soundCooldowns[arg1] > 5) then
-                    soundCooldowns[arg1] = now
-                    PlaySound(8174, "Master", true)
-                end
-            end
-        end
     end
 end)
 

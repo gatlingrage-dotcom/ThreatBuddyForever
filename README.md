@@ -54,6 +54,26 @@ Manage your addon at any time using these chat commands:
 ---
 
 ## 📝 Changelog
+# Changelog - ThreatBuddyForever
+
+### Version 2.1.0
+## - 2026-09-27
+### Fixed
+- **Dungeon Taint Shutdowns:** Resolved a fatal crash caused by the engine attempting to index tables with encrypted/secret unit GUID keys inside instances (`secret keys` error). The audio system now safely indexes nameplate tokens instead.
+- **String Conversion Taints:** Fixed a high-frequency layout loop freeze caused by performing `string.find` operations on protected unit identity parameters inside dungeons. Text evaluation features are now cleanly sandboxed inside `pcall` execution gates.
+- **Secret Boolean Blockers:** Wrapped conditional target branching evaluations (`UnitIsUnit`) in protective exception isolation frameworks to capture secret boolean responses from restricted nameplates, preventing interface shutdowns.
+- **White Texture Glitch:** Patched a bug where off-target display metrics would fail to initialize color parameters, defaulting widgets to a blank white texture layout.
+- **Mid-Wipe Addon Hiding:** Fixed a bug where a pet dying or party members releasing spirit mid-fight would trigger the "Solo Hiding" condition, disabling the addon during active encounters. The framework now securely forces widgets to stay alive until combat drops completely.
+
+### Added
+- **Visual Dynamic Threat Ticker:** Implemented a smooth frame-by-frame interpolation system that dynamically moves threat text up or down between `0%` and `100%` on background adds using safe time duration anchors, completely bypassing client data blackouts for off-targets.
+- **Reactive Engine Events:** Added instant hooks for `NAME_PLATE_UNIT_ADDED` and `NAME_PLATE_UNIT_REMOVED`, ensuring nameplates render the visual light layout immediately upon mob activation without waiting for the next CPU timer cycle.
+
+### Optimized
+- **Global Table Lookups:** Cauterized global namespace clutter by caching all primary client widget APIs locally, significantly lowering frame processing delays.
+- **Zero-Allocation Array Loops:** Swapped out heavy table layout iterators (`ipairs`) for high-performance numeric index loops (`for i = 1, #nameplates do`) to eliminate micro-stutters during massive AoE trash pulls.
+- **Options Panel Performance:** Optimized slider math loops inside `ThreatBuddyForeverOptions.lua` to clamp floating-point updates, stopping interface memory leaks.
+
 
 ### Version 2.0.0
 * **Added Tank/DPS Auto-Inversion:** Colors adapt automatically based on active Tank stances/forms.

@@ -71,6 +71,32 @@ local function SafeGetText(key)
     return ""
 end
 
+-- ===========================================================================
+-- HELPER DE VERIFICAÇÃO DE COMBATE DE GRUPO (V2.1)
+-- ===========================================================================
+local function IsUnitEngagedWithMyGroup(unit)
+    -- Se você ou seu pet tiverem qualquer nível de ameaça (0 a 3), o mob pertence ao seu combate
+    if UnitThreatSituation("player", unit) then return true end
+    if UnitExists("pet") and UnitThreatSituation("pet", unit) then return true end
+    
+    -- Se estiver em grupo, verifica se o alvo atual do mob está atacando alguém do seu grupo
+    if IsInGroup() or IsInRaid() then
+        local targetToken = unit .. "target"
+        if UnitExists(targetToken) then
+            for i = 1, 4 do
+                if UnitIsUnit(targetToken, "party" .. i) then return true end
+                if UnitExists("partypet" .. i) and UnitIsUnit(targetToken, "partypet" .. i) then return true end
+            end
+            if IsInRaid() then
+                for i = 1, 40 do
+                    if UnitIsUnit(targetToken, "raid" .. i) then return true end
+                end
+            end
+        end
+    end
+    
+    return false
+end
 
 local function CreateNewSignalWidget()
     if #widgetPool > 0 then
@@ -102,6 +128,8 @@ end
 
 local function RecycleSignalWidget(frame)
     frame:Hide() frame:ClearAllPoints() frame.glow:Hide() frame.unit = nil
+    frame.combatStartTime = nil
+    frame.currentThreatDisplayValue = 0
     table.insert(widgetPool, frame)
 end
 
@@ -137,7 +165,6 @@ UpdateSingleWidgetData = function(frame, unit)
         end)
     end
 
-    -- CORREÇÃO DE BOOLEANO SECRETO: Isola a avaliação do UnitIsUnit para o Target Atual
     local isCurrentTarget = false
     pcall(function()
         if UnitIsUnit(unit, "target") then
@@ -158,11 +185,9 @@ UpdateSingleWidgetData = function(frame, unit)
 
     local playerIsTank = IsPlayerTank()
 
-    -- 1. DETERMINAR A PORCENTAGEM ALVO DINÂMICA (TARGET PERCENT)
     local targetPercent = 0
     local parsedPercentSuccessfully = false
 
-    -- Se for o Alvo Principal, tenta ler a porcentagem exata real da API usando pcall blindado
     if isCurrentTarget then
         pcall(function()
             local _, _, threatPercent = UnitDetailedThreatSituation("player", unit)
@@ -178,7 +203,6 @@ UpdateSingleWidgetData = function(frame, unit)
         end)
     end
 
-    -- Para Off-Targets (ou se a API detalhada falhar), calculamos usando apenas o status nativo seguro e tempo
     if not parsedPercentSuccessfully then
         if status == 3 then
             targetPercent = 100
@@ -187,18 +211,12 @@ UpdateSingleWidgetData = function(frame, unit)
         elseif status == 1 then
             targetPercent = 75
         else
-            -- Status 0 (Sem Agro): Gerencia um cronômetro interno seguro anexado ao frame
             local now = GetTime()
-            if UnitAffectingCombat(unit) then
+            if IsUnitEngagedWithMyGroup(unit) then
                 if not frame.combatStartTime then
                     frame.combatStartTime = now
                 end
-                
-                -- Calcula a duração do combate (segundos passados). O tempo é um número normal seguro!
                 local duration = now - frame.combatStartTime
-                
-                -- Cria uma flutuação dinâmica realista entre 15% e 55% baseada no tempo de luta
-                -- A ameaça sobe gradualmente nos primeiros 8 segundos de combate
                 local timeFactor = math.min(duration / 8, 1)
                 targetPercent = math.floor(15 + (timeFactor * 40))
             else
@@ -208,7 +226,6 @@ UpdateSingleWidgetData = function(frame, unit)
         end
     end
 
-    -- 2. MOTOR DE SUAVIZAÇÃO FRAME-A-FRAME (TICKER LERP)
     if not frame.currentThreatDisplayValue then
         frame.currentThreatDisplayValue = 0
     end
@@ -222,7 +239,6 @@ UpdateSingleWidgetData = function(frame, unit)
     
     local finalDisplayValue = math.floor(frame.currentThreatDisplayValue + 0.5)
 
-    -- Determina as cores e efeitos com base no tipo de função (Tank ou DPS) e status de ameaça
     if isTaunted then
         displayColor = activeTheme.colors.taunt
         showGlowEffect = true
@@ -248,14 +264,12 @@ UpdateSingleWidgetData = function(frame, unit)
         end
     end
 
-    -- Exibição de Texto Pura
     if isTaunted then
         frame.text:SetText(SafeGetText("STATUS_TAUNT"))
     else
         frame.text:SetText(finalDisplayValue .. "%")
     end
 
-    -- Dispara alertas sonoros se necessário
     if status == 3 and currentDB.enableSound and not playerIsTank then
         local now = GetTime()
         if not soundCooldowns[unit] or (now - soundCooldowns[unit] > 6) then
@@ -264,7 +278,6 @@ UpdateSingleWidgetData = function(frame, unit)
         end
     end
 
-    -- PROTEÇÃO DE COR TOTAL CONTRA NULS E WHITE TEXTURES
     if type(displayColor) == "table" and #displayColor >= 3 then
         frame.signal:SetVertexColor(unpack(displayColor))
         if showGlowEffect and currentDB.enableGlow then
@@ -282,17 +295,14 @@ UpdateSingleWidgetData = function(frame, unit)
     if not frame:IsShown() then frame:Show() end
 end
 
-
--- Caches locais rápidos para evitar a alocação de memória na pilha global a cada quadro (OnUpdate)
 local C_NamePlate_GetNamePlates = C_NamePlate.GetNamePlates
 local C_NamePlate_GetNamePlateForUnit = C_NamePlate.GetNamePlateForUnit
-local UnitExists, UnitIsDead, UnitCanAttack, UnitAffectingCombat = UnitExists, UnitIsDead, UnitCanAttack, UnitAffectingCombat
+local UnitExists, UnitIsDead, UnitCanAttack = UnitExists, UnitIsDead, UnitCanAttack
 local InCombatLockdown, IsInGroup, IsInRaid = InCombatLockdown, IsInGroup, IsInRaid
 
 function TTP_RefreshAllNameplates()
     local currentDB = addonTable.GetDB()
     
-    -- Otimização do filtro Solo: Ignora cálculos se estiver fora de combate e configurado para ocultar
     if not InCombatLockdown() and currentDB.hideWhileSolo and not IsInGroup() and not IsInRaid() then
         if not (currentDB.showSoloWithPet and UnitExists("pet") and not UnitIsDead("pet")) then
             for unit, frame in pairs(activeWidgets) do RecycleSignalWidget(frame) activeWidgets[unit] = nil end
@@ -305,7 +315,9 @@ function TTP_RefreshAllNameplates()
         local nameplate = nameplates[i]
         if not nameplate:IsForbidden() then
             local unit = nameplate.namePlateUnitToken or (nameplate.UnitFrame and nameplate.UnitFrame.unit)
-            if unit and UnitExists(unit) and not UnitIsDead(unit) and UnitCanAttack("player", unit) and UnitAffectingCombat(unit) then
+            
+            -- FILTRO V2.1: Valida se o monstro pertence ao seu grupo/combate antes de desenhar
+            if unit and UnitExists(unit) and not UnitIsDead(unit) and UnitCanAttack("player", unit) and IsUnitEngagedWithMyGroup(unit) then
                 
                 local skipMob = false
                 if currentDB.filterTrivial then
@@ -339,17 +351,13 @@ function TTP_RefreshAllNameplates()
         end
     end
     
-    -- Varredura rápida de reciclagem de widgets órfãos
     for unit, frame in pairs(activeWidgets) do
-        if not C_NamePlate_GetNamePlateForUnit(unit) or not UnitExists(unit) or UnitIsDead(unit) or not UnitAffectingCombat(unit) then
+        if not C_NamePlate_GetNamePlateForUnit(unit) or not UnitExists(unit) or UnitIsDead(unit) or not IsUnitEngagedWithMyGroup(unit) then
             RecycleSignalWidget(frame) activeWidgets[unit] = nil
         end
     end
 end
 
--- ===========================================================================
--- MOTOR DE EXECUÇÃO EVENTOS E TIMERS OTIMIZADOS
--- ===========================================================================
 local elapsedTimer, glowAlpha, glowExpanding = 0, 0, true
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
@@ -363,7 +371,6 @@ eventFrame:SetScript("OnUpdate", function(_, elapsed)
     if not currentDB or not currentDB.updateThrottle then return end
     
     elapsedTimer = elapsedTimer + elapsed
-    -- Otimização: Apenas processa loops de nameplates se o timer estourar OU se houver mudança crítica
     if elapsedTimer >= currentDB.updateThrottle then
         elapsedTimer = 0
         if InCombatLockdown() or next(activeWidgets) then 
@@ -371,7 +378,6 @@ eventFrame:SetScript("OnUpdate", function(_, elapsed)
         end
     end
 
-    -- Efeito Néon Glow otimizado por multiplicador de tempo direto (Sem allocations)
     if glowExpanding then 
         glowAlpha = glowAlpha + (elapsed * 2.5) 
         if glowAlpha >= 0.9 then glowExpanding = false end
@@ -407,7 +413,6 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         for unit, frame in pairs(activeWidgets) do RecycleSignalWidget(frame) activeWidgets[unit] = nil end
         wipe(soundCooldowns)
     elseif (event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED") then
-        -- Otimização Reativa: Força uma atualização imediata do layout ao invés de esperar o próximo tick do throttle
         TTP_RefreshAllNameplates()
     elseif event == "UNIT_THREAT_LIST_UPDATE" and arg1 then
         local currentDB = addonTable.GetDB()

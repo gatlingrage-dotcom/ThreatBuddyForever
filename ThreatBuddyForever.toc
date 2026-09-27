@@ -1,4 +1,4 @@
-## Interface: 11509
+## Interface: 16001
 ## Title: ThreatBuddyForever |cff00ff00V2.0|r
 ## Version: 2.0.0
 ## Author: MeiaDeLeite

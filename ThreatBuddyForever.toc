@@ -6,6 +6,10 @@
 ## SavedVariables: ThreatBuddyForeverDB
 ## X-Category: Combat
 
+
+Core.lua
+Utils.lua
+Themes.lua
+Engine.lua
 Localization.lua
-ThreatBuddyForever.lua
-Options.lua
+ThreatBuddyForeverOptions.lua

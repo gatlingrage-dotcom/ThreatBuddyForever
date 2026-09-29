@@ -1,4 +1,55 @@
 # Changelog - ThreatBuddyForever
+# Changelog
+
+All notable changes to **ThreatBuddyForever** will be documented in this file. This project adheres to Semantic Versioning and is optimized for the **World of Warcraft Vanilla 2.0 (`16001`)** framework baseline.
+
+---
+## - v2.2.0 - beta
+## - 2026-09-29
+### Added
+* **Unblockable Vector Channels**: Re-routed themes to use native, hardcoded game sub-textures (`UI-RaidTargetingIcons` and `UI-Minimap-Border`) that are completely immune to modern nameplate graphic injection restrictions.
+
+### Fixed
+* **Translucent Square Glitch**: Eliminated the persistent dark square alpha shadows that bled through the backgrounds of round shapes on the modern client baseline.
+* **Invisible Theme Fix**: Resolved the transparent rendering error caused by using retail expansion texture keys that do not exist inside the Classic Era client files.
+
+---
+
+##
+
+### Added
+* **Display Backdrop Shape Toggle (`TEXT_SHOWBG`)**: Introduced a master checkbox to enable or disable background frames globally.
+* **Sub-Tree Option Hierarchy**: Nested the Theme Style selection arrows directly beneath the backdrop checkbox. The sub-tree dynamically grays out and locks whenever backdrops are disabled.
+
+### Fixed
+* **Dashboard Layout Realignment**: Rewrote the vertical pixel positioning chain across all sliders and checkboxes, completely fixing the layout overlapping bugs.
+* **Real-Time Label Localization**: Fixed an options tracking router bug to allow the "Theme Style Framework" label to translate instantly when switching language packs.
+
+---
+
+##
+
+### Added
+* **Threat Indicator Opacity Slider (`TEXT_ALPHA`)**: Added a 10% to 100% transparency trackbar to control the alpha values of fonts and indicator textures simultaneously.
+* **Multi-Language Opacity Localization**: Translated the new opacity labels across all 7 supported language arrays (English, Portuguese, Spanish, Italian, French, German, and Japanese).
+
+### Fixed
+* **Protected Function Taint Block**: Completely purged `UnitDetailedThreatSituation` calls which returned masked `<secret number>` values that crashed the game client. Replaced with un-taintable, clean integer checks using `UnitThreatSituation`.
+* **Vertex Color Packing Fix**: Resolved a fatal client crash by unpacking array values cleanly before forwarding color parameters to `SetVertexColor`.
+
+---
+
+##
+
+### Added
+* **Modular Code Overhaul**: Discarded the monolithic layout file in favor of a clean, **7-file single-responsibility directory blueprint** (`Core`, `Utils`, `Themes`, `Engine`, `Options`, `Localization`, and `Manifest`).
+* **Modernized Options Registration**: Updated settings registrations to use the Vanilla 2.0 native unified category assignment model (`Settings.RegisterCanvasLayoutCategory`).
+* **Asynchronous Deep Linking Delay**: Added a `C_Timer.After(0.01)` execution wrapper to the `/tbf` slash command, allowing the options panel to instantiate safely before opening the addon tab.
+
+### Fixed
+* **Interface 16001 Validation**: Bumped the build validation numbers to clear legacy execution penalties on modern Classic clients.
+* **Early Loading Loop Crash**: Added an asset safety gate to the `OnUpdate` loop engine to prevent runtime loops from executing before `Core.lua` data namespaces are loaded.
+* **Integer ID Redirection Pass**: Corrected a crash where text string category keys were being passed into the game's numeric-only `Settings.OpenToCategory` system.
 
 ## - v2.1.2
 ## - 2026-09-27

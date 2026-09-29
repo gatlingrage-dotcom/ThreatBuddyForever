@@ -42,7 +42,7 @@ local function EstimateFluidOffTargetThreat(unit, currentStatus)
     return 20 
 end
 
--- HIGH-SPEED TEXTURE & COLOR INTERPOLATOR (V7.8.0 - TEXT CHANNEL ARRAY FIX)
+-- HIGH-SPEED TEXTURE & COLOR INTERPOLATOR (V8.0.0 - SINGLE-LINE ARRAY EXTRACTION)
 UpdateSingleWidgetData = function(frame, unit)
     local isTestFrame = (unit == "test")
     if not isTestFrame then
@@ -75,14 +75,20 @@ UpdateSingleWidgetData = function(frame, unit)
     if not isTestFrame then
         local targetToken = unit .. "target"
         if UnitExists(targetToken) then
-            if UnitIsUnit("player", targetToken) then
-                isTargetingPlayer = true
-            elseif status == 0 and not UnitIsUnit("pet", targetToken) then
-                if frame.currentThreatDisplayValue and frame.currentThreatDisplayValue > 30 then
+            local success, isTargetingMe, isTargetingTeam = pcall(function()
+                if UnitIsUnit("player", targetToken) then
+                    return true, false
+                elseif status == 0 and not UnitIsUnit("pet", targetToken) then
                     if addonTable.IsUnitEngagedWithMyGroup(unit) then
-                        isTaunted = true
+                        return false, true
                     end
                 end
+                return false, false
+            end)
+            
+            if success then
+                if isTargetingMe then isTargetingPlayer = true end
+                if isTargetingTeam then isTaunted = true end
             end
         end
     end
@@ -179,31 +185,36 @@ UpdateSingleWidgetData = function(frame, unit)
     local masterTextAlpha = currentDB.widgetAlpha or 1.0
     local iconAlphaSliderValue = currentDB.colorAlpha or 1.0
 
-    -- FIXED EXPLICIT ARRAY INDEXING EXTRACTION:
-    -- Pulls numerical coordinate key values directly from bracket positional indices, [2], [3]
-    local r, g, b = 1, 1, 1
+    -- BULLETPROOF EXPLICIT SINGLE-LINE UNPACK EXTRACTION:
+    -- Forces variables onto separate evaluation tracks to prevent table cross-pollution crashes.
+    local r = 1
+    local g = 1
+    local b = 1
+    
     if type(displayColor) == "table" and #displayColor >= 3 then
-        r, g, b = displayColor[1], displayColor[2], displayColor[3]
+        r = displayColor[1]
+        g = displayColor[2]
+        b = displayColor[3]
     else
         local fallbackColor = playerIsTank and {1, 0.1, 0.1} or {0.1, 0.85, 0.1}
-        r, g, b = fallbackColor[1], fallbackColor[2], fallbackColor[3]
+        r = fallbackColor[1]
+        g = fallbackColor[2]
+        b = fallbackColor[3]
     end
 
-    -- 1. TEXT LAYER: Only influenced by the Master Threat Opacity slider tracking channel
+    -- 1. TEXT LAYER: Assured clean decimals configuration
     frame.text:SetTextColor(r, g, b, 1.0)
     frame.text:SetAlpha(masterTextAlpha)
 
-    -- 2. ICON LAYER: Completely broken off from text alpha loops!
+    -- 2. ICON LAYER: Broken off from text loop filters
     if activeTexture then
         local correctedTexture = tonumber(activeTexture) or activeTexture
         frame.signal:SetTexture(correctedTexture)
         
         -- DYNAMIC BYPASS MATRIX:
         if iconAlphaSliderValue == 0 then
-            -- Native color mode: Draw the icon at 100% full opacity, leaving text colored!
             frame.signal:SetVertexColor(1, 1, 1, 1.0)
         else
-            -- Threat color overlay tint mode: Uses only your Icon Texture Color Opacity slider settings channel
             frame.signal:SetVertexColor(r, g, b, iconAlphaSliderValue)
         end
         
@@ -216,7 +227,7 @@ UpdateSingleWidgetData = function(frame, unit)
 end
 
 
--- MASTER MULTI-NAMEPLATE ITERATOR LOOP (V7.3.0 - MASK SYNC OVERHAUL FIXED)
+-- MASTER MULTI-NAMEPLATE ITERATOR LOOP (V7.5.0 - DUNGEON SECRET STRING SAFE)
 function TTP_RefreshAllNameplates()
     if not addonTable.GetDB then return end
     local currentDB = addonTable.GetDB()
@@ -245,13 +256,25 @@ function TTP_RefreshAllNameplates()
                 
                 local skipMob = false
                 if currentDB.filterTrivial then
-                    if UnitClassification and UnitClassification(unit) == "trivial" then 
-                        skipMob = true
-                    else
-                        local name = UnitName(unit)
-                        if name and (string_find(name, "Totem") or string_find(name, "totem")) then 
-                            skipMob = true 
+                    -- DUNGEON TAINT PROTECTION WRAPPER:
+                    -- Wraps both UnitClassification and UnitName inside a protected call.
+                    -- If a dungeon mob returns a protected <secret string> for its type or name, 
+                    -- the pcall catches it instantly and skips filtering to prevent a fatal UI crash.
+                    local success, shouldSkip = pcall(function()
+                        if UnitClassification and UnitClassification(unit) == "trivial" then
+                            return true
                         end
+                        
+                        local name = UnitName(unit)
+                        if name and (string_find(name, "Totem") or string_find(name, "totem")) then
+                            return true
+                        end
+                        
+                        return false
+                    end)
+                    
+                    if success and shouldSkip then
+                        skipMob = true
                     end
                 end
                 
@@ -274,10 +297,6 @@ function TTP_RefreshAllNameplates()
                     frame:SetParent(nameplate)
                     frame.unit = unit 
                     
-                    -- CRITICAL ENHANCEMENT MASK SYNC:
-                    -- Re-verify mask state dynamically on the active widget. 
-                    -- This ensures that frames freshly pulled out of the cache pool 
-                    -- immediately respect your choice toggle settings.
                     if frame.signal then
                         if currentDB.cutIconEdges and frame.signal.SetMask then
                             frame.signal:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
@@ -308,6 +327,7 @@ function TTP_RefreshAllNameplates()
         end 
     end
 end
+
 
 -- HIGH-PERFORMANCE UPDATER TICKER THROTTLES
 local elapsedTimer = 0

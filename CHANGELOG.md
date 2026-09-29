@@ -7,6 +7,18 @@ All notable changes to **ThreatBuddyForever** will be documented in this file. T
 
 All notable changes to this project are documented in this file.
 
+
+---
+## - v2.2.0.2 - beta
+## - 2026-09-29
+### 🚀 Added
+- **Dungeon Taint Encapsulation Wrappers:** Implemented a multi-tier protective call (`pcall`) architecture to guard core nameplate evaluation metrics. Automatically catches and handles protected client variables silently in the background, allowing threat calculations to proceed uninterrupted.
+
+### 🔧 Fixed
+- **Blizzard `<secret string>` Crash Resolved:** Fixed a fatal crash in Mythic+ keys where the game client handed a protected identity format to text filtering routines. Wrapped both `UnitClassification` and `UnitName` check loops to prevent UI failures on affix mobs or hidden dungeon elements.
+- **Blizzard `<secret boolean>` Token Crash Corrected:** Addressed an identity tracking error inside instance group clusters. The target locker loop now safely handles restricted cross-faction PvP pointers or protected NPC flags returned by `UnitIsUnit`.
+- **Multi-Variable Assignment Table Glitch Fix:** Resolved an intermittent `bad argument #1 to SetTextColor` error caused by an architectural quirk in Lua's multi-assignment handling. Rewrote the color engine channel pipeline to extract Red, Green, and Blue coordinates (`r`, `g`, `b`) explicitly on their own dedicated compilation tracks.
+- **Total Opacity Isolation Tuning:** Refactored the layout matrix renderer to fully separate independent transparencies. Fading your text values or pulling your sliders down to a 0% original native color bypass layer will no longer cross-pollute color masking or cause layout drawing skips.
 ---
 ## - v2.2.0.1 - beta
 ## - 2026-09-29

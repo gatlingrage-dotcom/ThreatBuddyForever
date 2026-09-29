@@ -48,9 +48,9 @@ bootFrame:SetScript("OnEvent", function(_, event, arg1)
         db.targetScale = db.targetScale or 1.35
         db.useCharProfile = (db.useCharProfile == true)
         db.visualStyle = db.visualStyle or "SIGNAL_LIGHT"
-                -- Injects an unblockable default alpha layer transparency parameter profile (1.0 = Opaque)
         db.widgetAlpha = db.widgetAlpha or 1.0
-        -- Injects an unblockable default background toggle flag (true = Display enabled)
+        db.colorAlpha = db.colorAlpha or 1.0
+        db.cutIconEdges = (db.cutIconEdges == true) 
         db.showBackgroundFrame = (db.showBackgroundFrame ~= false)
 
         

@@ -3,8 +3,35 @@
 
 All notable changes to **ThreatBuddyForever** will be documented in this file. This project adheres to Semantic Versioning and is optimized for the **World of Warcraft Vanilla 2.0 (`16001`)** framework baseline.
 
+# Changelog - ThreatBuddyForever 2.0
+
+All notable changes to this project are documented in this file.
+
 ---
-## - v2.2.0 - beta
+## - v2.2.0.1 - beta
+## - 2026-09-29
+### 🚀 Added
+- **Dynamic Dictionary-Free Icon Solver:** Rewrote texture routing via a direct file-system asset parser. Bypasses Blizzard string protection blocks natively via lowercase forward-slash formatting (`interface/icons/`). It natively handles **any custom or default icon name or pure numeric FileID** in World of Warcraft history without a hardcoded dictionary list.
+- **Paginated Global Icon Selection Matrix:** Built an independent **275x300** browsing popup menu directly into the addon. Replaced memory-clogging multi-button allocation schemes with a crash-immune, high-fidelity **5x4 (20 tiles per page)** dynamic paginate grid canvas.
+- **Keystroke-by-Keystroke Real-Time Input Syncing:** Re-wired text input streams via the `OnTextChanged` event loop hook. Swaps nameplate icon textures character-by-character **instantly as you type or paste text** without forcing a system `/reload` or pressing Enter.
+- **Independent Opacity Sliders Matrix:** Completely uncoupled the indicator layers. The **Threat Indicator Opacity** slider controls text transparency, while the new **Icon Texture Color Opacity** slider isolates the icon asset artwork fading levels independently.
+- **Native Color Artwork Bypass Matrix:** Programmed a unique feature rule: dragging the Icon Color Opacity slider down to exactly **0% acts as a Native Color Bypass**. This disables threat tint filters, revealing your chosen icon in its full original artwork colors while keeping threat percentage text dynamically colored.
+- **Corner-Clip Custom Sub-Option:** Introduced a dynamic toggle sub-option check button: **"Clip Icon Corners (Smooth Rounded Edges)"** matching localized string parameters across all game clients.
+- **Auto-Fit Window Component Width Padding:** Implemented Real-time width padding re-calculators (`GetTextWidth()`) on menu action buttons to dynamically expand or contract containers natively based on active language translations.
+
+### 🔧 Fixed
+- **Nameplate Recycle Reference Fault Overhaul:** Resolved an issue where widgets remained hidden on alternating pulled packs by swapping camera tracking addresses for parent independent hardware token markers (`frame.unit ~= unit`).
+- **Memory Leak & Duplicate Allocations Elimination:** Repaired a resource drain scenario that disabled drawing elements after consecutive dungeon pulls. Rebuilt the out-of-combat cleanup framework to forcefully clear out existing caches when `PLAYER_REGEN_ENABLED` triggers.
+- **Unpacked Color Matrix Crash Corrected:** Fixed fatal script failures (`bad argument #1 to SetVertexColor` & `SetTextColor`) by replacing raw table references with explicit index positional mapping variables (`[1]`, `[2]`, `[3]`).
+- **Legacy Clear Button Protection Layers:** Wrapped modern asset configurations within a safe structural layer (`if iconEditBox.SetClearButtonEnabled then`) to cleanly shield older legacy classic expansion engines from throwing execution breaks.
+- **Circular Alpha Mask Texture Coords Clash:** Resolved a clipping collision error (`Cannot set tex coords when texture has mask`) by removing all manual bounding box crop updates when hardware smooth edge masks are active.
+
+### 🗑️ Removed
+- **Legacy Clutter Pruning:** Stripped out old, bloated background text-bounding box modifiers, bronze bevel frame attachments (`Interface\\Tooltips\\UI-Tooltip-Border`), and style dropdown menus to achieve a pure, high-performance minimalist layout.
+
+
+---
+## - v2.2.0.0 - beta
 ## - 2026-09-29
 ### Added
 * **Unblockable Vector Channels**: Re-routed themes to use native, hardcoded game sub-textures (`UI-RaidTargetingIcons` and `UI-Minimap-Border`) that are completely immune to modern nameplate graphic injection restrictions.

@@ -25,8 +25,6 @@ scrollFrame:SetPoint("BOTTOMRIGHT", -28, 10)
 local scrollChild = CreateFrame("Frame", "TBFOptionsScrollChild", scrollFrame)
 scrollChild:SetSize(600, 750)
 scrollFrame:SetScrollChild(scrollChild)
-
---2
 -- ===========================================================================
 -- ANIMATED HEADER COMPOSITOR SECTION
 -- ===========================================================================
@@ -73,40 +71,164 @@ petCheck:SetPoint("TOPLEFT", soloCheck, "BOTTOMLEFT", 20, -6)
 local soundCheck = CreateFrame("CheckButton", "TBFSoundCheckButton", scrollChild, "InterfaceOptionsCheckButtonTemplate")
 soundCheck:SetPoint("TOPLEFT", petCheck, "BOTTOMLEFT", -20, -14)
 
---3
 local playButton = CreateFrame("Button", "TBFPlaySoundButton", scrollChild, "UIPanelButtonTemplate")
 playButton:SetSize(60, 22) playButton:SetPoint("LEFT", soundCheck, "LEFT", 260, 0)
 playButton:SetText("Play") playButton:SetScript("OnClick", function() PlaySound(8174, "Master", true) end)
 
 local highlightCheck = CreateFrame("CheckButton", "TBFHighlightCheckButton", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-highlightCheck:SetPoint("TOPLEFT", soundCheck, "BOTTOMLEFT", 0, -10) -- Safely chained below sound row
+highlightCheck:SetPoint("TOPLEFT", soundCheck, "BOTTOMLEFT", 0, -10)
 
 local filterCheck = CreateFrame("CheckButton", "TBFFilterCheckButton", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-filterCheck:SetPoint("TOPLEFT", highlightCheck, "BOTTOMLEFT", 0, -10) -- Safely chained below highlight row
+filterCheck:SetPoint("TOPLEFT", highlightCheck, "BOTTOMLEFT", 0, -10)
 
 local charProfileCheck = CreateFrame("CheckButton", "TBFCharProfileCheckButton", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-charProfileCheck:SetPoint("TOPLEFT", filterCheck, "BOTTOMLEFT", 0, -10) -- Safely chained below filter row
+charProfileCheck:SetPoint("TOPLEFT", filterCheck, "BOTTOMLEFT", 0, -10)
+-- ===========================================================================
+-- CUSTOM ICON TEXT ENTRY CONTROLLER & NATIVE ICON PICKER (BROWSE DIALOG)
+-- ===========================================================================
+local customIconLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+customIconLabel:SetPoint("TOPLEFT", charProfileCheck, "BOTTOMLEFT", 0, -20)
+customIconLabel:SetText("") -- Safely filled at runtime by RefreshPanelStrings
 
--- MASTER BACKGROUND VISIBILITY CONTROLLER NODE
-local showBGCheck = CreateFrame("CheckButton", "TBFShowBGCheckButton", scrollChild, "InterfaceOptionsCheckButtonTemplate")
-showBGCheck:SetPoint("TOPLEFT", charProfileCheck, "BOTTOMLEFT", 0, -14) -- Safely chained below profile row
+local iconEditBox = CreateFrame("EditBox", "TBFCustomIconEditBox", scrollChild, "InputBoxTemplate")
+iconEditBox:SetSize(210, 24)
+iconEditBox:SetPoint("TOPLEFT", customIconLabel, "BOTTOMLEFT", 0, -6)
+iconEditBox:SetAutoFocus(false)
 
--- SUB-TREE NESTING TREE: Shifted 24 pixels right to show nesting hierarchy clearly
-local styleLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-styleLabel:SetPoint("TOPLEFT", showBGCheck, "BOTTOMLEFT", 24, -14) -- Indented by 24 pixels
+if iconEditBox.SetClearButtonEnabled then
+    iconEditBox:SetClearButtonEnabled(true)
+end
 
-local stylePrevBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
-stylePrevBtn:SetSize(28, 22) stylePrevBtn:SetPoint("LEFT", styleLabel, "RIGHT", 15, 0) stylePrevBtn:SetText("<")
+local browseIconsBtn = CreateFrame("Button", "TBFBrowseIconsButton", scrollChild, "UIPanelButtonTemplate")
+browseIconsBtn:SetHeight(24)
+browseIconsBtn:SetPoint("LEFT", iconEditBox, "RIGHT", 8, 0)
+browseIconsBtn:SetText("") -- Safely filled at runtime by RefreshPanelStrings
+browseIconsBtn.fitTextWidthPadding = 12
 
-local styleChoiceBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
-styleChoiceBtn:SetSize(130, 22) styleChoiceBtn:SetPoint("LEFT", stylePrevBtn, "RIGHT", 4, 0)
+-- BUILD AN INDEPENDENT TBF ICON SELECTION POPUP PANEL FRAME
+local TBF_IconPickerFrame = CreateFrame("Frame", "TBFCustomIconPickerFrame", UIParent, "BackdropTemplate")
+TBF_IconPickerFrame:SetSize(275, 300)
+TBF_IconPickerFrame:SetPoint("LEFT", optionsPanel, "RIGHT", 25, 0)
+TBF_IconPickerFrame:SetFrameStrata("DIALOG")
+TBF_IconPickerFrame:Hide()
 
-local styleNextBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
-styleNextBtn:SetSize(28, 22) styleNextBtn:SetPoint("LEFT", styleChoiceBtn, "RIGHT", 4, 0) styleNextBtn:SetText(">")
+TBF_IconPickerFrame:SetBackdrop({
+    bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile = true, tileSize = 16, edgeSize = 14,
+    insets = { left = 3, right = 3, top = 3, bottom = 3 }
+})
+TBF_IconPickerFrame:SetBackdropBorderColor(0.60, 0.50, 0.40, 1)
 
--- LANGUAGE PACK TRACKS: Aligned back to the left margin line below the style framework
+local pickerTitle = TBF_IconPickerFrame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+pickerTitle:SetPoint("TOPLEFT", 18, -14)
+pickerTitle:SetText("") -- Safely filled at runtime by RefreshPanelStrings
+
+local globalMacroIcons = {
+    132333, 134153, 132212, 132147, 132155, 135800, 135964, 136012, 136085, 136116,
+    136122, 136200, 134951, 132111, 132161, 132115, 135911, 135940, 135959, 135988,
+    136025, 136041, 136052, 136066, 136074, 136096, 136104, 136137, 136148, 136176,
+    136184, 136189, 136210, 136222, 132204, 132218, 132240, 132255, 132276, 132292,
+    132305, 132316, 132331, 132341, 132363, 132381, 132393, 132410, 132435, 132444,
+    132060, 132085, 132010, 132117, 132130, 132144, 132170, 132185, 132199, 132222,
+    132235, 132250, 132269, 132288, 132311, 132328, 132350, 132369, 132389, 132405,
+    132422, 132450, 132465, 132480, 132495, 132510, 132525, 132540, 132555, 132570
+}
+
+local currentPage = 1
+local iconsPerPage = 20 
+local maxPages = math.ceil(#globalMacroIcons / iconsPerPage)
+
+local pageText = TBF_IconPickerFrame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+pageText:SetPoint("BOTTOM", TBF_IconPickerFrame, "BOTTOM", 0, 52)
+
+local gridButtons = {}
+local function UpdatePickerGridDisplay()
+    pageText:SetText(string.format("Page %d / %d", currentPage, maxPages))
+    local startOffset = (currentPage - 1) * iconsPerPage
+    
+    for gridIndex = 1, iconsPerPage do
+        local targetAssetIndex = startOffset + gridIndex
+        local btn = gridButtons[gridIndex]
+        local iconTextureSource = globalMacroIcons[targetAssetIndex]
+        
+        if iconTextureSource then
+            btn.texture:SetTexture(iconTextureSource)
+            btn.savedIconTextureValue = iconTextureSource
+            btn:Show()
+        else
+            btn:Hide()
+        end
+    end
+end
+
+local iconsPerRow = 5
+local buttonSize = 38
+local spacing = 10
+
+for idx = 1, iconsPerPage do
+    local btn = CreateFrame("Button", nil, TBF_IconPickerFrame)
+    btn:SetSize(buttonSize, buttonSize)
+    btn:SetPoint("TOPLEFT", 21 + (((idx - 1) % iconsPerRow) * (buttonSize + spacing)), -42 - (math.floor((idx - 1) / iconsPerRow) * (buttonSize + spacing)))
+    
+    local tex = btn:CreateTexture(nil, "BACKGROUND")
+    tex:SetAllPoints()
+    tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    btn.texture = tex
+
+    local high = btn:CreateTexture(nil, "HIGHLIGHT")
+    high:SetAllPoints()
+    high:SetTexture("Interface\\Buttons\\CheckButtonHilight")
+    high:SetBlendMode("ADD")
+
+    btn:SetScript("OnClick", function(self)
+        if self.savedIconTextureValue then
+            local selection = self.savedIconTextureValue
+            addonTable.GetDB().customIconPath = selection
+            
+            -- FIX: Setting the userInput flag parameter to true kicks off real-time updates instantly!
+            iconEditBox:SetText(tostring(selection), true)
+            
+            if addonTable.RebuildWidgetTextures then addonTable.RebuildWidgetTextures() end
+            if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
+            if testFrame and addonTable.UpdateSingleWidgetData then addonTable.UpdateSingleWidgetData(testFrame, "test") end
+            
+            TBF_IconPickerFrame:Hide()
+        end
+    end)
+    gridButtons[idx] = btn
+end
+
+local prevPageBtn = CreateFrame("Button", nil, TBF_IconPickerFrame, "UIPanelButtonTemplate")
+prevPageBtn:SetSize(36, 22) prevPageBtn:SetPoint("BOTTOMLEFT", 18, 44) prevPageBtn:SetText("<")
+prevPageBtn:SetScript("OnClick", function() if currentPage > 1 then currentPage = currentPage - 1 UpdatePickerGridDisplay() end end)
+
+local nextPageBtn = CreateFrame("Button", nil, TBF_IconPickerFrame, "UIPanelButtonTemplate")
+nextPageBtn:SetSize(36, 22) nextPageBtn:SetPoint("BOTTOMRIGHT", -18, 44) nextPageBtn:SetText(">")
+nextPageBtn:SetScript("OnClick", function() if currentPage < maxPages then currentPage = currentPage + 1 UpdatePickerGridDisplay() end end)
+
+local resetDefaultBtn = CreateFrame("Button", nil, TBF_IconPickerFrame, "UIPanelButtonTemplate")
+local cutEdgesCheck = CreateFrame("CheckButton", "TBFCutIconEdgesCheckButton", scrollChild, "InterfaceOptionsCheckButtonTemplate")
+cutEdgesCheck:SetPoint("TOPLEFT", iconEditBox, "BOTTOMLEFT", 0, -10)
+resetDefaultBtn:SetHeight(22) 
+resetDefaultBtn:SetPoint("BOTTOM", TBF_IconPickerFrame, "BOTTOM", 0, 14)
+resetDefaultBtn:SetText("") -- Safely filled at runtime by RefreshPanelStrings
+resetDefaultBtn.fitTextWidthPadding = 16
+if resetDefaultBtn:GetFontString() then resetDefaultBtn:GetFontString():SetFont(STANDARD_TEXT_FONT, 10) end
+
+resetDefaultBtn:SetScript("OnClick", function()
+    addonTable.GetDB().customIconPath = nil
+    iconEditBox:SetText("")
+    if addonTable.RebuildWidgetTextures then addonTable.RebuildWidgetTextures() end
+    if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
+    if testFrame and addonTable.UpdateSingleWidgetData then addonTable.UpdateSingleWidgetData(testFrame, "test") end
+    TBF_IconPickerFrame:Hide()
+end)
+
+browseIconsBtn:SetScript("OnClick", function() if TBF_IconPickerFrame:IsShown() then TBF_IconPickerFrame:Hide() else currentPage = 1 UpdatePickerGridDisplay() TBF_IconPickerFrame:Show() end end)
+
 local langLabel = scrollChild:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-langLabel:SetPoint("TOPLEFT", styleLabel, "BOTTOMLEFT", -24, -25) -- Aligned back to left margin axis line
+langLabel:SetPoint("TOPLEFT", cutEdgesCheck, "BOTTOMLEFT", 0, -25)
 
 local prevBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
 prevBtn:SetSize(28, 22) prevBtn:SetPoint("LEFT", langLabel, "RIGHT", 15, 0) prevBtn:SetText("<")
@@ -116,25 +238,16 @@ choiceBtn:SetSize(130, 22) choiceBtn:SetPoint("LEFT", prevBtn, "RIGHT", 4, 0)
 
 local nextBtn = CreateFrame("Button", nil, scrollChild, "UIPanelButtonTemplate")
 nextBtn:SetSize(28, 22) nextBtn:SetPoint("LEFT", choiceBtn, "RIGHT", 4, 0) nextBtn:SetText(">")
-
-local visualStyles = {
-    { label = "Classic Circle", value = "SIGNAL_LIGHT" },
-    { label = "Custom Square HUD", value = "SQUARE_PLATE" },
-    { label = "Sleek Modern Ring", value = "MODERN_HUD" }
-}
-
-if prevBtn:GetFontString() then prevBtn:GetFontString():SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE") end
-if nextBtn:GetFontString() then nextBtn:GetFontString():SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE") end
-if stylePrevBtn:GetFontString() then stylePrevBtn:GetFontString():SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE") end
-if styleNextBtn:GetFontString() then styleNextBtn:GetFontString():SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE") end
-
-
---4
+-- ===========================================================================
+-- SLIDER TRACK MATRIX HOUSING
+-- ===========================================================================
 local scaleSlider = CreateFrame("Slider", "TBFScaleSlider", scrollChild, "OptionsSliderTemplate")
 local targetScaleSlider = CreateFrame("Slider", "TBFTargetScaleSlider", scrollChild, "OptionsSliderTemplate")
 local offsetSlider = CreateFrame("Slider", "TBFOffsetSlider", scrollChild, "OptionsSliderTemplate")
 local lagSlider = CreateFrame("Slider", "TBFLagSlider", scrollChild, "OptionsSliderTemplate")
 local alphaSlider = CreateFrame("Slider", "TBFAlphaSlider", scrollChild, "OptionsSliderTemplate")
+-- NEW SLIDER: Controls icon texture opacity independently from the text parameters
+local colorAlphaSlider = CreateFrame("Slider", "TBFColorAlphaSlider", scrollChild, "OptionsSliderTemplate")
 
 scaleSlider:SetPoint("TOPLEFT", langLabel, "BOTTOMLEFT", 0, -45)
 scaleSlider:SetWidth(200) scaleSlider:SetMinMaxValues(0.5, 2.0) scaleSlider:SetValueStep(0.1) scaleSlider:SetObeyStepOnDrag(true)
@@ -144,8 +257,7 @@ _G[scaleSlider:GetName() .. "Text"]:ClearAllPoints() _G[scaleSlider:GetName() ..
 targetScaleSlider:SetPoint("TOPLEFT", scaleSlider, "BOTTOMLEFT", 0, -55)
 targetScaleSlider:SetWidth(200) targetScaleSlider:SetMinMaxValues(1.0, 2.5) targetScaleSlider:SetValueStep(0.05) targetScaleSlider:SetObeyStepOnDrag(true)
 _G[targetScaleSlider:GetName() .. "Low"]:SetText("1.0x") _G[targetScaleSlider:GetName() .. "High"]:SetText("2.5x")
-_G[targetScaleSlider:GetName() .. "Text"]:ClearAllPoints() 
-_G[targetScaleSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", targetScaleSlider, "TOPLEFT", 0, 6)
+_G[targetScaleSlider:GetName() .. "Text"]:ClearAllPoints() _G[targetScaleSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", targetScaleSlider, "TOPLEFT", 0, 6)
 
 offsetSlider:SetPoint("TOPLEFT", targetScaleSlider, "BOTTOMLEFT", 0, -55)
 offsetSlider:SetWidth(200) offsetSlider:SetMinMaxValues(-20, 50) offsetSlider:SetValueStep(2) offsetSlider:SetObeyStepOnDrag(true)
@@ -162,6 +274,15 @@ alphaSlider:SetWidth(200) alphaSlider:SetMinMaxValues(0.10, 1.00) alphaSlider:Se
 _G[alphaSlider:GetName() .. "Low"]:SetText("10%") _G[alphaSlider:GetName() .. "High"]:SetText("100%")
 _G[alphaSlider:GetName() .. "Text"]:ClearAllPoints() _G[alphaSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", alphaSlider, "TOPLEFT", 0, 6)
 
+-- NEW SLIDER ANCHORS MAPPING: Places the icon color alpha layout under the master alpha control
+colorAlphaSlider:SetPoint("TOPLEFT", alphaSlider, "BOTTOMLEFT", 0, -55)
+colorAlphaSlider:SetWidth(200) colorAlphaSlider:SetMinMaxValues(0.00, 1.00) colorAlphaSlider:SetValueStep(0.05) colorAlphaSlider:SetObeyStepOnDrag(true)
+_G[colorAlphaSlider:GetName() .. "Low"]:SetText("0%") _G[colorAlphaSlider:GetName() .. "High"]:SetText("100%")
+_G[colorAlphaSlider:GetName() .. "Text"]:ClearAllPoints() _G[colorAlphaSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", colorAlphaSlider, "TOPLEFT", 0, 6)
+
+-- ===========================================================================
+-- GLOBAL FALLBACK REGISTRATION & STRING REFRESH PIPELINE
+-- ===========================================================================
 function addonTable.GetFallbackText(key)
     if addonTable.SafeGetText then 
         local localizedText = addonTable.SafeGetText(key)
@@ -177,14 +298,17 @@ function addonTable.GetFallbackText(key)
         TEXT_HIGHLIGHT = "Scale Target Widget Focus Highlighting",
         TEXT_FILTER = "Filter out Trivial Mobs & Background Totems",
         TEXT_CHARPROFILE = "Use Separate Character Profiles (Ignore Global Settings)",
-        TEXT_SHOWBG = "Display Backdrop Shape Layout Matrix",
-        TEXT_STYLEFRAME = "Theme Style Framework:", -- Default Fallback Added
         TEXT_LANG = "Language Localization Pack Profile:",
         TEXT_SCALE = "Master Widget Size Scale: ",
         TEXT_TARSCALE = "Focus Target Highlights Scaling: ",
         TEXT_DIST = "Nameplate Horizontal Pixel Spacing Offset: ",
         TEXT_LAG = "Nameplate Interface Scanner Throttle Ticks: ",
-        TEXT_ALPHA = "Threat Indicator Opacity: "
+        TEXT_ALPHA = "Threat Indicator Opacity: ",
+        TEXT_ICON_LABEL = "Custom Icon Name or Asset ID:",
+        TEXT_BROWSE_BTN = "Browse...",
+        TEXT_RESET_BTN  = "Reset Default",
+        TEXT_CUT_EDGES = "Clip Icon Corners (Smooth Rounded Edges)",
+        TEXT_COLOR_ALPHA = "Icon Texture Color Opacity: "
     }
     return fallbacks[key] or key
 end
@@ -193,15 +317,26 @@ local function RefreshPanelStrings()
     local currentDB = addonTable.GetDB and addonTable.GetDB() or {}
     local GetText = addonTable.GetFallbackText
     
+    if not GetText then return end
+    
     title:SetText("ThreatBuddyForever 2.0") sub:SetText(GetText("PANEL_SUB"))
     _G[glowCheck:GetName() .. "Text"]:SetText(GetText("TEXT_GLOW")) _G[soloCheck:GetName() .. "Text"]:SetText(GetText("TEXT_SOLO"))
     _G[petCheck:GetName() .. "Text"]:SetText(GetText("TEXT_PET")) _G[soundCheck:GetName() .. "Text"]:SetText(GetText("TEXT_SOUND"))
     _G[highlightCheck:GetName() .. "Text"]:SetText(GetText("TEXT_HIGHLIGHT")) _G[filterCheck:GetName() .. "Text"]:SetText(GetText("TEXT_FILTER"))
     _G[charProfileCheck:GetName() .. "Text"]:SetText(GetText("TEXT_CHARPROFILE")) langLabel:SetText(GetText("TEXT_LANG"))
-    _G[showBGCheck:GetName() .. "Text"]:SetText(GetText("TEXT_SHOWBG"))
+    _G[cutEdgesCheck:GetName() .. "Text"]:SetText(GetText("TEXT_CUT_EDGES"))
     
-    -- FIXED: Changed from hardcoded string to dynamic localization mapping hook
-    styleLabel:SetText(GetText("TEXT_STYLEFRAME"))
+    customIconLabel:SetText(GetText("TEXT_ICON_LABEL"))
+    if pickerTitle then pickerTitle:SetText(GetText("TEXT_ICON_LABEL")) end
+    
+    -- AUTO-FIT WIDTH COMPU-MATRIX: Automatically updates button sizes dynamically
+    browseIconsBtn:SetText(GetText("TEXT_BROWSE_BTN"))
+    local browseTextWidth = browseIconsBtn:GetTextWidth() or 60
+    browseIconsBtn:SetWidth(math.max(75, browseTextWidth + 20))
+    
+    resetDefaultBtn:SetText(GetText("TEXT_RESET_BTN"))
+    local resetTextWidth = resetDefaultBtn:GetTextWidth() or 90
+    resetDefaultBtn:SetWidth(math.max(120, resetTextWidth + 24))
     
     if ThreatBuddyForeverDB and currentDB.widgetScale then
         _G[scaleSlider:GetName() .. "Text"]:SetText(GetText("TEXT_SCALE") .. string.format("%.1f", currentDB.widgetScale))
@@ -209,45 +344,26 @@ local function RefreshPanelStrings()
         _G[offsetSlider:GetName() .. "Text"]:SetText(GetText("TEXT_DIST") .. (currentDB.xOffset or 10) .. "px")
         _G[lagSlider:GetName() .. "Text"]:SetText(GetText("TEXT_LAG") .. string.format("%.2fs", currentDB.updateThrottle or 0.08))
         _G[alphaSlider:GetName() .. "Text"]:SetText(GetText("TEXT_ALPHA") .. string.format("%d%%", math.floor((currentDB.widgetAlpha or 1.0) * 100)))
+        _G[colorAlphaSlider:GetName() .. "Text"]:SetText(GetText("TEXT_COLOR_ALPHA") .. string.format("%d%%", math.floor((currentDB.colorAlpha or 1.0) * 100)))
+
     end
     local currentIdx = 1
     if ThreatBuddyForeverDB then for i = 1, #languages do if ThreatBuddyForeverDB.forcedLocale == languages[i].value then currentIdx = i break end end end
     choiceBtn:SetText(languages[currentIdx].label)
-    local currentStyle = currentDB.visualStyle or "SIGNAL_LIGHT" local activeStyleIdx = 1
-    for i = 1, #visualStyles do if visualStyles[i].value == currentStyle then activeStyleIdx = i break end end
-    styleChoiceBtn:SetText(visualStyles[activeStyleIdx].label)
 end
 
-
---5
 local function CycleLanguage(direction)
     if not ThreatBuddyForeverDB then return end local currentIdx = 1
     for i = 1, #languages do if ThreatBuddyForeverDB.forcedLocale == languages[i].value then currentIdx = i break end end
     local newIdx = currentIdx + direction if newIdx < 1 then newIdx = #languages end if newIdx > #languages then newIdx = 1 end
     ThreatBuddyForeverDB.forcedLocale = languages[newIdx].value RefreshPanelStrings()
 end
-
-local function CycleVisualStyle(direction)
-    local currentDB = addonTable.GetDB and addonTable.GetDB() or {} local currentStyle = currentDB.visualStyle or "SIGNAL_LIGHT"
-    local activeIdx = 1 for i = 1, #visualStyles do if visualStyles[i].value == currentStyle then activeIdx = i break end end
-    local newIdx = activeIdx + direction if newIdx < 1 then newIdx = #visualStyles end if newIdx > #visualStyles then newIdx = 1 end
-    currentDB.visualStyle = visualStyles[newIdx].value RefreshPanelStrings()
-    if addonTable.RebuildWidgetTextures then addonTable.RebuildWidgetTextures() end
-    if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
-    if testFrame and testFrame:IsShown() then addonTable.UpdateSingleWidgetData(testFrame, "test") end
-end
-
-local function UpdateSubTreeOptionsState(isEnabled)
-    if isEnabled then
-        styleLabel:SetAlpha(1.0) stylePrevBtn:Enable() styleChoiceBtn:Enable() styleNextBtn:Enable()
-    else
-        styleLabel:SetAlpha(0.35) stylePrevBtn:Disable() styleChoiceBtn:Disable() styleNextBtn:Disable()
-    end
-end
-
+-- ===========================================================================
+-- FORM SLIDER EVENT ASSIGNERS & INSTANT KEYSTROKE TEXT HANDLERS
+-- ===========================================================================
 glowCheck:SetScript("OnClick", function(self) addonTable.GetDB().enableGlow = self:GetChecked() == true; if type(TTP_RefreshAllNameplates) == "function" then TTP_RefreshAllNameplates() end end)
 soloCheck:SetScript("OnClick", function(self) addonTable.GetDB().hideWhileSolo = self:GetChecked() == true; if type(TTP_RefreshAllNameplates) == "function" then TTP_RefreshAllNameplates() end end)
-petCheck:SetScript("OnClick", function(self) addonTable.GetDB().showSoloWithPet = self:GetChecked() == true; if type(TBF_RefreshAllNameplates) == "function" then TBF_RefreshAllNameplates() end end)
+petCheck:SetScript("OnClick", function(self) addonTable.GetDB().showSoloWithPet = self:GetChecked() == true; if type(TTP_RefreshAllNameplates) == "function" then TTP_RefreshAllNameplates() end end)
 soundCheck:SetScript("OnClick", function(self) addonTable.GetDB().enableSound = self:GetChecked() == true end)
 highlightCheck:SetScript("OnClick", function(self) addonTable.GetDB().highlightTarget = self:GetChecked() == true end)
 filterCheck:SetScript("OnClick", function(self) addonTable.GetDB().filterTrivial = self:GetChecked() == true end)
@@ -259,22 +375,29 @@ charProfileCheck:SetScript("OnClick", function(self)
     alphaSlider:SetValue(currentDB.widgetAlpha or 1.0) RefreshPanelStrings()
 end)
 
-showBGCheck:SetScript("OnClick", function(self)
-    local isChecked = (self:GetChecked() == true)
-    addonTable.GetDB().showBackgroundFrame = isChecked
-    UpdateSubTreeOptionsState(isChecked)
+-- FIXED: Key-by-key text box processing update engine triggers
+iconEditBox:SetScript("OnTextChanged", function(self, userInput)
+    if not userInput then return end -- Shield execution from systemic data cycles loops
+    local path = self:GetText():gsub("^%s*(.-)%s*$", "%1")
+    addonTable.GetDB().customIconPath = (path ~= "") and path or nil
+    
     if addonTable.RebuildWidgetTextures then addonTable.RebuildWidgetTextures() end
     if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
+    if testFrame and addonTable.UpdateSingleWidgetData then addonTable.UpdateSingleWidgetData(testFrame, "test") end
+end)
+
+iconEditBox:SetScript("OnEnterPressed", function(self)
+    self:ClearFocus() -- Keep as focus dropout trigger shortcut
+end)
+
+iconEditBox:SetScript("OnEditFocusLost", function(self)
+    local path = self:GetText():gsub("^%s*(.-)%s*$", "%1")
+    addonTable.GetDB().customIconPath = (path ~= "") and path or nil
+    if addonTable.RebuildWidgetTextures then addonTable.RebuildWidgetTextures() end
 end)
 
 prevBtn:SetScript("OnClick", function() CycleLanguage(-1) end) nextBtn:SetScript("OnClick", function() CycleLanguage(1) end) choiceBtn:SetScript("OnClick", function() CycleLanguage(1) end)
-stylePrevBtn:SetScript("OnClick", function() CycleVisualStyle(-1) end) styleNextBtn:SetScript("OnClick", function() CycleVisualStyle(1) end) styleChoiceBtn:SetScript("OnClick", function() CycleVisualStyle(1) end)
-scaleSlider:SetScript("OnValueChanged", function(self, value)
-    local rounded = math.floor((value * 10) + 0.5) / 10 addonTable.GetDB().widgetScale = rounded
-    _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_SCALE") .. string.format("%.1f", rounded))
-    if addonTable.activeWidgets then for _, frame in pairs(addonTable.activeWidgets) do if frame.SetScale then frame:SetScale(rounded) end end end
-    if testFrame and testFrame.SetScale then testFrame:SetScale(rounded) end
-end)
+
 scaleSlider:SetScript("OnValueChanged", function(self, value)
     local rounded = math.floor((value * 10) + 0.5) / 10 addonTable.GetDB().widgetScale = rounded
     _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_SCALE") .. string.format("%.1f", rounded))
@@ -294,21 +417,32 @@ lagSlider:SetScript("OnValueChanged", function(self, value)
     local rounded = math.floor((value * 100) + 0.5) / 100 addonTable.GetDB().updateThrottle = rounded
     _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_LAG") .. string.format("%.2fs", rounded))
 end)
-
 alphaSlider:SetScript("OnValueChanged", function(self, value)
-    local rounded = math.floor((value * 100) + 0.5) / 100
-    addonTable.GetDB().widgetAlpha = rounded
+    local rounded = math.floor((value * 100) + 0.5) / 100 addonTable.GetDB().widgetAlpha = rounded
     _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_ALPHA") .. string.format("%d%%", math.floor(rounded * 100)))
     if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
     if testFrame and addonTable.UpdateSingleWidgetData then addonTable.UpdateSingleWidgetData(testFrame, "test") end
 end)
+colorAlphaSlider:SetScript("OnValueChanged", function(self, value)
+    local rounded = math.floor((value * 100) + 0.5) / 100 
+    addonTable.GetDB().colorAlpha = rounded
+    _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_COLOR_ALPHA") .. string.format("%d%%", math.floor(rounded * 100)))
+    if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
+    if testFrame and addonTable.UpdateSingleWidgetData then addonTable.UpdateSingleWidgetData(testFrame, "test") end
+end)
+cutEdgesCheck:SetScript("OnClick", function(self)
+    local isChecked = (self:GetChecked() == true)
+    addonTable.GetDB().cutIconEdges = isChecked
+    
+    -- Force the active textures engine to apply or strip the mask immediately
+    if addonTable.RebuildWidgetTextures then addonTable.RebuildWidgetTextures() end
+    if TTP_RefreshAllNameplates then TTP_RefreshAllNameplates() end
+    if testFrame and addonTable.UpdateSingleWidgetData then addonTable.UpdateSingleWidgetData(testFrame, "test") end
+end)
+    addonTable.settingsCategoryObject = nil
 
-addonTable.settingsCategoryObject = nil
-
--- FIXED: Purged the deprecated RegisterCanvasToCategory call cleanly
 local function RegisterAddonSettingsCategory()
     if Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory then
-        -- Native 16001 baseline layout wrapper handles canvas registration completely in one step
         local category = Settings.RegisterCanvasLayoutCategory(optionsPanel, optionsPanel.name)
         Settings.RegisterAddOnCategory(category)
         addonTable.settingsCategoryObject = category
@@ -326,11 +460,11 @@ syncFrame:SetScript("OnEvent", function(_, event, arg1)
         soundCheck:SetChecked(currentDB.enableSound) highlightCheck:SetChecked(currentDB.highlightTarget) filterCheck:SetChecked(currentDB.filterTrivial)
         charProfileCheck:SetChecked(db.useCharProfile) scaleSlider:SetValue(currentDB.widgetScale or 1.0) targetScaleSlider:SetValue(currentDB.targetScale or 1.35)
         offsetSlider:SetValue(currentDB.xOffset or 10) lagSlider:SetValue(currentDB.updateThrottle or 0.08)
+        colorAlphaSlider:SetValue(currentDB.colorAlpha or 1.0)
+        cutEdgesCheck:SetChecked(currentDB.cutIconEdges)
         alphaSlider:SetValue(currentDB.widgetAlpha or 1.0) 
         
-        local bgEnabled = (currentDB.showBackgroundFrame ~= false)
-        showBGCheck:SetChecked(bgEnabled)
-        UpdateSubTreeOptionsState(bgEnabled)
+        if iconEditBox then iconEditBox:SetText(currentDB.customIconPath or "") end
         
         RefreshPanelStrings()
         RegisterAddonSettingsCategory()
@@ -383,4 +517,3 @@ SlashCmdList.THREATBUDDYFOREVER = function(msg)
         end
     end
 end
-

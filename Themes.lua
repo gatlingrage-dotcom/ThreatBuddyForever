@@ -1,62 +1,60 @@
 local ADDON_NAME, addonTable = ...
 
--- MASTER THEME DICTIONARY (V7.1.0 - UNBLOCKABLE NATIVE ENGINE SHAPES)
-addonTable.THEMES = {
-    SIGNAL_LIGHT = {
-        size = 36, 
-        font = STANDARD_TEXT_FONT,
-        fontSize = 11,
-        texture = "Interface\\TargetingFrame\\UI-RaidTargetingIcons", 
-        texCoords = { 0.25, 0.50, 0, 0.25 }, -- Hardware crops directly to a perfect round solid circle disk
-        isCircle = true,
-        colors = {
-            good = { 0.10, 0.85, 0.10 }, -- Safe Green
-            warn = { 1.00, 0.55, 0.00 }, -- Warning Amber
-            bad  = { 1.00, 0.10, 0.10 }, -- Danger Red
-            idle = { 0.25, 0.25, 0.25 }, 
-            taunt = { 0.00, 0.80, 1.00 } 
-        }
-    },
-    SQUARE_PLATE = { 
-        size = 38,
-        font = STANDARD_TEXT_FONT,
-        fontSize = 11,
-        texture = "Interface\\CastingBar\\UI-CastingBar-Border", 
-        texCoords = { 0.10, 0.90, 0.22, 0.78 }, -- Hardware crops to isolate a gorgeous chiseled rectangular box
-        isCircle = false,
-        colors = {
-            good = { 0.10, 0.85, 0.30 }, 
-            warn = { 1.00, 0.65, 0.00 }, 
-            bad  = { 1.00, 0.10, 0.20 }, 
-            idle = { 0.20, 0.20, 0.20 },
-            taunt = { 0.00, 0.80, 1.00 }
-        }
-    },
-    MODERN_HUD = { 
-        size = 44, 
-        font = STANDARD_TEXT_FONT,
-        fontSize = 11,
-        texture = "Interface\\Minimap\\UI-Minimap-Border", 
-        texCoords = { 0.05, 0.95, 0.05, 0.95 }, -- Hardware crops out layout borders to isolate a thin ring loop
-        isCircle = true,
-        colors = {
-            good = { 0.00, 1.00, 0.50 }, -- Electric Neon Green
-            warn = { 1.00, 0.75, 0.00 }, -- Amber Gold
-            bad  = { 1.00, 0.15, 0.15 }, -- Plasma Danger Red
-            idle = { 0.20, 0.20, 0.20 },
-            taunt = { 0.00, 0.85, 1.00 }
-        }
-    }
-}
+-- Slimmed down to a single global default configuration size profile
+addonTable.IconSize = 36
 
-function addonTable.GetActiveTheme()
-    local currentDB = addonTable.GetDB()
-    local styleKey = currentDB.visualStyle or "SIGNAL_LIGHT"
-    return addonTable.THEMES[styleKey] or addonTable.THEMES.SIGNAL_LIGHT
+-- COMPLETE LUA ENGINE ASSET SOLVER: ZERO HARDCODED DICTIONARIES (V9.0.0)
+function addonTable.ResolveIconTexturePath(inputString)
+    if not inputString or inputString == "" then 
+        return nil -- DEFAULT: Return nil to keep the icon layer completely text-only
+    end
+    
+    -- Clean the string: Convert to lowercase and trim any accidental spaces/whitespaces
+    local cleanString = tostring(inputString):gsub("^%s*(.-)%s*$", "%1"):lower()
+    
+    -- 1. PURE NUMBER CHECK: If the player typed a direct Asset ID (like 4638531), return it instantly
+    local numericID = tonumber(cleanString)
+    if numericID then 
+        return numericID 
+    end
+    
+    -- 2. STRIP COPIED PATH PATTERNS: Extract only the cleanest filename block
+    local iconNameOnly = cleanString:match("([^\\/]+)$") or cleanString
+    iconNameOnly = iconNameOnly:gsub("%.blp$", ""):gsub("%.png$", "")
+    
+    -- 3. UN-BLOCKED ENGINE TEXTURE REGISTER INTERCEPT:
+    -- Instead of passing a dead string, we query Blizzard's filesystem table.
+    -- If C_Texture isn't ready or returns nil, we explicitly pass the exact 
+    -- texture name format that SetTexture() uses to dynamically pull from the client data.
+    if C_Texture and C_Texture.GetFileSystemTextureID then
+        local resolvedID = C_Texture.GetFileSystemTextureID(iconNameOnly)
+        if resolvedID and resolvedID > 0 then
+            return resolvedID
+        end
+        
+        -- Safe auto-correct step for truncated legacy names (like mindfreeze -> mindfreez)
+        local truncatedName = iconNameOnly:sub(1, #iconNameOnly - 1)
+        local truncatedID = C_Texture.GetFileSystemTextureID(truncatedName)
+        if truncatedID and truncatedID > 0 then
+            return truncatedID
+        end
+    end
+    
+    -- 4. THE MAGIC UNBREAKABLE FALLBACK INTERFACE ROUTE:
+    -- If the game engine's lookup hasn't indexed the name yet, passing a string formatted 
+    -- with lowercase forward-slashes bypasses the hard string block and forces the 
+    -- graphic layer renderer to fetch the file token natively by name string!
+    return "interface/icons/" .. iconNameOnly
 end
--- HIGH-PERFORMANCE UNBLOCKABLE GEOMETRY ALLOCATOR
+
+
+
+function addonTable.GetActiveTexture()
+    local currentDB = addonTable.GetDB()
+    return addonTable.ResolveIconTexturePath(currentDB.customIconPath)
+end
+
 function addonTable.CreateNewSignalWidget()
-    local activeTheme = addonTable.GetActiveTheme()
     local widgetPool = addonTable.widgetPool
     
     if #widgetPool > 0 then
@@ -65,66 +63,61 @@ function addonTable.CreateNewSignalWidget()
         return frame
     end
     
-    -- Created clean without BackdropTemplate allocations to bypass alpha lock crashes completely
     local frame = CreateFrame("Frame", nil, UIParent)
-    frame:SetSize(activeTheme.size, activeTheme.size)
+    frame:SetSize(addonTable.IconSize, addonTable.IconSize)
     frame:SetFrameStrata("HIGH")
 
-    -- 1. BASE BACKGROUND HOUSING: Flat dark backing plate (Only visible for square mode)
-    frame.bgTexture = frame:CreateTexture(nil, "BACKGROUND", nil, -2)
-    frame.bgTexture:SetTexture("Interface\\Buttons\\WHITE8X8")
-    frame.bgTexture:SetVertexColor(0.04, 0.04, 0.04, 0.50)
-
-    -- 2. MAIN VISIBLE GRAPHIC FIXTURE: Sits securely on the middle ARTWORK layout channel
-    frame.signal = frame:CreateTexture(nil, "ARTWORK", nil, 4) 
-    frame.signal:SetSize(activeTheme.size, activeTheme.size)
+    -- MINIMALIST ARCHITECTURE LAYER Node
+    frame.signal = frame:CreateTexture(nil, "ARTWORK") 
+    frame.signal:SetSize(addonTable.IconSize, addonTable.IconSize)
     frame.signal:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    
+    -- DYNAMIC SUB-OPTION TOGGLE RECONCILER
+    local currentDB = addonTable.GetDB and addonTable.GetDB() or {}
+    if currentDB.cutIconEdges and frame.signal.SetMask then
+        frame.signal:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+    end
 
-    -- Explicitly purge all obsolete masking variables to lock visibility profiles
-    frame.circleMask = nil
-    frame.innerMask = nil
-
-    -- 3. NUMERIC PERCENTAGE TEXT LAYER (Floats at the very top of the stack)
-    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge", 7)
+    -- THE PERCENTAGE TEXT
+    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     frame.text:SetPoint("CENTER", frame, "CENTER", 0, 0)
-    frame.text:SetFont(STANDARD_TEXT_FONT, activeTheme.fontSize, "OUTLINE")
+    frame.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
     frame.text:SetTextColor(1, 1, 1)
     
     return frame
 end
 
 function addonTable.RecycleSignalWidget(frame)
-    frame:Hide() frame:ClearAllPoints() frame.unit = nil
-    frame.combatStartTime = nil frame.currentThreatDisplayValue = 0
+    frame:Hide() 
+    frame:ClearAllPoints() 
+    frame.unit = nil
+    frame.combatStartTime = nil 
+    frame.currentThreatDisplayValue = 0
+    -- Clean off the mask explicitly if present to ensure the widget resets for the pool cache
+    if frame.signal and frame.signal.RemoveMask then frame.signal:RemoveMask() end
     table.insert(addonTable.widgetPool, frame)
 end
--- REAL-TIME TRANSFORMS CONTROLLER (V7.1.0 - SECURE VECTOR ASSIGNMENT HOOKS)
+
 function addonTable.RebuildWidgetTextures()
+    local activeTexture = addonTable.GetActiveTexture()
     local currentDB = addonTable.GetDB()
-    local activeTheme = addonTable.GetActiveTheme()
-    local showBackdrop = currentDB.showBackgroundFrame
     
     for _, frame in pairs(addonTable.activeWidgets) do
-        frame:SetSize(activeTheme.size, activeTheme.size)
-        
-        if not showBackdrop then
-            frame.signal:Hide()
-            frame.bgTexture:Hide()
-        else
-            frame.signal:SetTexture(activeTheme.texture)
-            frame.signal:SetSize(activeTheme.size, activeTheme.size)
-            frame.signal:SetTexCoord(unpack(activeTheme.texCoords))
-            frame.signal:Show()
+        if frame and frame.signal then
+            frame:SetSize(addonTable.IconSize, addonTable.IconSize)
             
-            if activeTheme.isCircle then
-                -- ROUND MODES: Shut down background square blocker plates to leave shape vectors pristine
-                frame.bgTexture:Hide()
+            -- Apply or clear the hardware masking layers on the fly
+            if currentDB.cutIconEdges and frame.signal.SetMask then
+                frame.signal:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+            elseif frame.signal.RemoveMask then
+                frame.signal:RemoveMask()
+            end
+            
+            if activeTexture then
+                frame.signal:SetTexture(activeTexture)
+                frame.signal:Show()
             else
-                -- SQUARE HUD MODE: Fits the dark backing plate container cleanly beneath Blizzard's chiseled layout border
-                frame.bgTexture:ClearAllPoints()
-                frame.bgTexture:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
-                frame.bgTexture:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)
-                frame.bgTexture:Show()
+                frame.signal:Hide()
             end
         end
     end

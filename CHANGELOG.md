@@ -7,6 +7,13 @@ All notable changes to **ThreatBuddyForever** will be documented in this file. T
 
 All notable changes to this project are documented in this file.
 
+---
+## - v2.2.0.3 - beta
+## - 2026-09-30
+### 🔧 Fixed
+- **Corner Clipping Lockout Resolved (Smooth Rounded Edges Fix):** Corrected a core UI bug where checking/unchecking the "Clip Icon Corners" sub-option failed to apply or remove the rounded mask in real-time. 
+- **Dual-Channel Texture Architecture Implemented:** Replaced the unstable runtime `SetMask`/`RemoveMask` calls with an independent **Dual-Channel Frame Layout Matrix**. Addon now initializes a standard square canvas (`frame.signal`) and a separate permanently-masked canvas (`frame.signalMasked`) at startup. Checking the box seamlessly switches visibility vectors, bypassing Blizzard's real-time texture drawing locks completely with 100% reliability.
+- **Pruned Frame Refreshes Bloat:** Stripped out legacy loop queries inside `TTP_RefreshAllNameplates` to keep nameplate allocation speeds fast and lightweight.
 
 ---
 ## - v2.2.0.2 - beta

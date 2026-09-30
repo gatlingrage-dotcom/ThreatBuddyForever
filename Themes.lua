@@ -54,6 +54,9 @@ function addonTable.GetActiveTexture()
     return addonTable.ResolveIconTexturePath(currentDB.customIconPath)
 end
 
+-- ===========================================================================
+-- DUAL-CHANNEL TEXTURE WIDGET MANAGER (V10.0.0 - MASK LOCK BYPASS)
+-- ===========================================================================
 function addonTable.CreateNewSignalWidget()
     local widgetPool = addonTable.widgetPool
     
@@ -67,19 +70,23 @@ function addonTable.CreateNewSignalWidget()
     frame:SetSize(addonTable.IconSize, addonTable.IconSize)
     frame:SetFrameStrata("HIGH")
 
-    -- MINIMALIST ARCHITECTURE LAYER Node
-    frame.signal = frame:CreateTexture(nil, "ARTWORK") 
+    -- CHANNEL A: Standard crisp square icon layout
+    frame.signal = frame:CreateTexture(nil, "ARTWORK", nil, 1) 
     frame.signal:SetSize(addonTable.IconSize, addonTable.IconSize)
     frame.signal:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    frame.signal:SetTexCoord(0.07, 0.93, 0.07, 0.93) -- Clean border trim
+
+    -- CHANNEL B: Dedicated rounded mask icon layout (Permanent clipping anchor)
+    frame.signalMasked = frame:CreateTexture(nil, "ARTWORK", nil, 2)
+    frame.signalMasked:SetSize(addonTable.IconSize, addonTable.IconSize)
+    frame.signalMasked:SetPoint("CENTER", frame, "CENTER", 0, 0)
     
-    -- DYNAMIC SUB-OPTION TOGGLE RECONCILER
-    local currentDB = addonTable.GetDB and addonTable.GetDB() or {}
-    if currentDB.cutIconEdges and frame.signal.SetMask then
-        frame.signal:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+    if frame.signalMasked.SetMask then
+        frame.signalMasked:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
     end
 
-    -- THE PERCENTAGE TEXT
-    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    -- THE PERCENTAGE TEXT LAYER
+    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge", 7)
     frame.text:SetPoint("CENTER", frame, "CENTER", 0, 0)
     frame.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
     frame.text:SetTextColor(1, 1, 1)
@@ -93,8 +100,8 @@ function addonTable.RecycleSignalWidget(frame)
     frame.unit = nil
     frame.combatStartTime = nil 
     frame.currentThreatDisplayValue = 0
-    -- Clean off the mask explicitly if present to ensure the widget resets for the pool cache
-    if frame.signal and frame.signal.RemoveMask then frame.signal:RemoveMask() end
+    if frame.signal then frame.signal:Hide() end
+    if frame.signalMasked then frame.signalMasked:Hide() end
     table.insert(addonTable.widgetPool, frame)
 end
 
@@ -103,21 +110,25 @@ function addonTable.RebuildWidgetTextures()
     local currentDB = addonTable.GetDB()
     
     for _, frame in pairs(addonTable.activeWidgets) do
-        if frame and frame.signal then
+        if frame then
             frame:SetSize(addonTable.IconSize, addonTable.IconSize)
             
-            -- Apply or clear the hardware masking layers on the fly
-            if currentDB.cutIconEdges and frame.signal.SetMask then
-                frame.signal:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
-            elseif frame.signal.RemoveMask then
-                frame.signal:RemoveMask()
-            end
+            -- Route active drawing channels based on the current sub-option toggle state
+            local activeLayer = currentDB.cutIconEdges and frame.signalMasked or frame.signal
+            local inactiveLayer = currentDB.cutIconEdges and frame.signal or frame.signalMasked
+            
+            inactiveLayer:Hide()
             
             if activeTexture then
-                frame.signal:SetTexture(activeTexture)
-                frame.signal:Show()
+                local correctedTexture = tonumber(activeTexture) or activeTexture
+                activeLayer:SetTexture(correctedTexture)
+                activeLayer:Show()
             else
-                frame.signal:Hide()
+                activeLayer:Hide()
+            end
+            
+            if frame.unit and addonTable.UpdateSingleWidgetData then
+                addonTable.UpdateSingleWidgetData(frame, frame.unit)
             end
         end
     end

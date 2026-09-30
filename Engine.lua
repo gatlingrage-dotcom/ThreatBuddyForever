@@ -202,25 +202,35 @@ UpdateSingleWidgetData = function(frame, unit)
         b = fallbackColor[3]
     end
 
-    -- 1. TEXT LAYER: Assured clean decimals configuration
+    -- 1. TEXT LAYER: Only influenced by the Master Threat Opacity slider tracking channel
     frame.text:SetTextColor(r, g, b, 1.0)
     frame.text:SetAlpha(masterTextAlpha)
 
-    -- 2. ICON LAYER: Broken off from text loop filters
+    -- 2. DUAL-CHANNEL ICON LAYER MATRIX RESOLVER:
+    -- Dynamically maps properties to the texture file that matches your checkbox selection
     if activeTexture then
         local correctedTexture = tonumber(activeTexture) or activeTexture
-        frame.signal:SetTexture(correctedTexture)
+        
+        -- Determine active visual drawing target nodes instantly
+        local activeLayer = currentDB.cutIconEdges and frame.signalMasked or frame.signal
+        local inactiveLayer = currentDB.cutIconEdges and frame.signal or frame.signalMasked
+        
+        -- Keep inactive channels locked down to clear background artifacting clutter
+        inactiveLayer:Hide()
+        
+        activeLayer:SetTexture(correctedTexture)
         
         -- DYNAMIC BYPASS MATRIX:
         if iconAlphaSliderValue == 0 then
-            frame.signal:SetVertexColor(1, 1, 1, 1.0)
+            activeLayer:SetVertexColor(1, 1, 1, 1.0)
         else
-            frame.signal:SetVertexColor(r, g, b, iconAlphaSliderValue)
+            activeLayer:SetVertexColor(r, g, b, iconAlphaSliderValue)
         end
         
-        if not frame.signal:IsShown() then frame.signal:Show() end
+        if not activeLayer:IsShown() then activeLayer:Show() end
     else
-        frame.signal:Hide()
+        if frame.signal then frame.signal:Hide() end
+        if frame.signalMasked then frame.signalMasked:Hide() end
     end
     
     if not frame:IsShown() then frame:Show() end
@@ -297,19 +307,12 @@ function TTP_RefreshAllNameplates()
                     frame:SetParent(nameplate)
                     frame.unit = unit 
                     
-                    if frame.signal then
-                        if currentDB.cutIconEdges and frame.signal.SetMask then
-                            frame.signal:SetMask("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
-                        elseif frame.signal.RemoveMask then
-                            frame.signal:RemoveMask()
-                        end
-                    end
-                    
                     frame:ClearAllPoints() 
                     frame:SetPoint("LEFT", anchor, "RIGHT", currentDB.xOffset or 10, 0) 
                     
                     if not frame:IsShown() then frame:Show() end
                     UpdateSingleWidgetData(frame, unit)
+
                 else 
                     if activeWidgets[unit] then 
                         addonTable.RecycleSignalWidget(activeWidgets[unit]) 

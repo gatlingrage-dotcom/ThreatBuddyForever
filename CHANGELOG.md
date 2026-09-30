@@ -14,6 +14,9 @@ All notable changes to this project are documented in this file.
 - **Corner Clipping Lockout Resolved (Smooth Rounded Edges Fix):** Corrected a core UI bug where checking/unchecking the "Clip Icon Corners" sub-option failed to apply or remove the rounded mask in real-time. 
 - **Dual-Channel Texture Architecture Implemented:** Replaced the unstable runtime `SetMask`/`RemoveMask` calls with an independent **Dual-Channel Frame Layout Matrix**. Addon now initializes a standard square canvas (`frame.signal`) and a separate permanently-masked canvas (`frame.signalMasked`) at startup. Checking the box seamlessly switches visibility vectors, bypassing Blizzard's real-time texture drawing locks completely with 100% reliability.
 - **Pruned Frame Refreshes Bloat:** Stripped out legacy loop queries inside `TTP_RefreshAllNameplates` to keep nameplate allocation speeds fast and lightweight.
+### 🚀 Added
+- **In-Game Automatic Version Synchronization:** Integrated an un-taintable addon communication networking loop (`C_ChatInfo.SendAddOnMessage`). Addon now automatically cross-references version release hashes via party/raid packets whenever entering groups.
+- **Outdated Client Chat Notification Alerts:** Configured a smart chat warning parser that alerts players directly in their chat logs if a teammate is detected running a newer, updated codebase file.
 
 ---
 ## - v2.2.0.2 - beta

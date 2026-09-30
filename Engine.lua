@@ -394,3 +394,54 @@ function addonTable.TriggerThreatAudioAlert(unit, status)
 end
 
 addonTable.UpdateSingleWidgetData = UpdateSingleWidgetData
+
+-- ===========================================================================
+-- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS
+-- ===========================================================================
+local commPrefix = "TBF_VERSION_CHECK"
+local versionAlertPlayed = false -- Only show the alert once per login session
+
+-- Register a secure communication prefix with the game engine
+C_ChatInfo.RegisterAddonMessagePrefix(commPrefix)
+
+local commFrame = CreateFrame("Frame")
+commFrame:RegisterEvent("PLAYER_LOGIN")
+commFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
+commFrame:RegisterEvent("CHAT_MSG_ADDON")
+
+commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
+    if event == "PLAYER_LOGIN" then
+        -- Automatically broadcast your version number upon logging in or reloading
+        if IsInGroup() then
+            local targetChannel = IsInRaid() and "RAID" or "PARTY"
+            C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
+        end
+        
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        -- Sync up with teammates whenever someone new joins your dungeon pack
+        if IsInGroup() then
+            local targetChannel = IsInRaid() and "RAID" or "PARTY"
+            C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
+        end
+        
+    elseif event == "CHAT_MSG_ADDON" and prefix == commPrefix then
+        -- Catch incoming version messages from other group players safely
+        local myName = UnitName("player") .. "-" .. GetRealmName():gsub(" ", "")
+        if sender == myName then return end -- Ignore your own broadcast packets
+        
+        -- Compare version strings safely using protected number evaluations
+        if text and addonTable.Version and not versionAlertPlayed then
+            -- Clean and break version strings down (e.g. "2.0.0" -> 200)
+            local currentNum = tonumber(addonTable.Version:gsub("%.", "")) or 200
+            local incomingNum = tonumber(text:gsub("%.", "")) or 200
+            
+            if incomingNum > currentNum then
+                versionAlertPlayed = true
+                -- Broadcast a clean print alert notice right into your localized chat frame console
+                C_Timer.After(3.0, function()
+                    print(string.format("|cff00ff00ThreatBuddyForever:|r A newer version (|cffffd100V%s|r) is available! Please update your addon to prevent script errors.", text))
+                end)
+            end
+        end
+    end
+end)

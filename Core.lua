@@ -1,9 +1,13 @@
 local ADDON_NAME, addonTable = ...
 
--- Expose internal caching nodes safely across separate files [1.32]
+-- NEW: Current development release string token
+addonTable.Version = "2.2.0.3-beta"
+
+-- Expose internal caching nodes safely across separate files
 addonTable.activeWidgets = addonTable.activeWidgets or {}
 addonTable.widgetPool = addonTable.widgetPool or {}
 addonTable.soundCooldowns = addonTable.soundCooldowns or {}
+
 
 -- Core database lookup profile routing (Global node vs character-locked profile)
 function addonTable.GetDB()

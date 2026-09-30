@@ -27,11 +27,11 @@ local defaultLocale = {
     TEXT_DIST = "Nameplate Horizontal Pixel Spacing Offset: ",
     TEXT_LAG = "Nameplate Interface Scanner Throttle Ticks: ",
     TEXT_ALPHA = "Threat Indicator Opacity: ",
-    -- CORRECTED MINIMALIST SELECTION STRINGS
     TEXT_ICON_LABEL = "Custom Icon Name or Asset ID:",
     TEXT_BROWSE_BTN = "Browse...",
     TEXT_COLOR_ALPHA = "Icon Texture Color Opacity: ",
     TEXT_CUT_EDGES = "Clip Icon Corners (Smooth Rounded Edges)",
+    TEXT_VERSION_ALERT = "A newer version (V%s) is available! Please update your addon to prevent script errors.",
     TEXT_RESET_BTN  = "Reset Default"
 }
 
@@ -82,6 +82,7 @@ addonTable.Locales["ptBR"] = {
     TEXT_BROWSE_BTN = "Procurar...",
     TEXT_COLOR_ALPHA = "Opacidade da Cor do Ícone: ",
     TEXT_CUT_EDGES = "Cortar Bordas do Ícone (Bordas Arredondadas)",
+    TEXT_VERSION_ALERT = "Uma nova versão (V%s) está disponível! Por favor, atualize o addon para evitar erros de script.",
     TEXT_RESET_BTN  = "Resetar Padrão"
 }
 -- ===========================================================================
@@ -111,6 +112,7 @@ local esLocale = {
     TEXT_BROWSE_BTN = "Examinar...",
     TEXT_COLOR_ALPHA = "Opacidad del Color del Icono: ",
     TEXT_CUT_EDGES = "Recortar Bordas del Icono (Bordes Redondeados)",
+    TEXT_VERSION_ALERT = "¡Una nueva versión (V%s) está disponible! Por favor, actualiza el addon para evitar errores de script.",
     TEXT_RESET_BTN  = "Restablecer"
 }
 addonTable.Locales["esES"] = esLocale
@@ -142,6 +144,7 @@ addonTable.Locales["itIT"] = {
     TEXT_BROWSE_BTN = "Sfoglia...",
     TEXT_COLOR_ALPHA = "Opacità Colore dell'Icona: ",
     TEXT_CUT_EDGES = "Arrotonda i Bordi dell'Icona (Angoli Lisci)",
+    TEXT_VERSION_ALERT = "È disponibile una nuova versione (V%s)! Aggiorna l'addon per evitare errori di script.",
     TEXT_RESET_BTN  = "Ripristina Predefinito"
 }
 -- ===========================================================================
@@ -171,6 +174,7 @@ addonTable.Locales["frFR"] = {
     TEXT_BROWSE_BTN = "Parcourir...",
     TEXT_COLOR_ALPHA = "Opacité de la Couleur de l'Icône : ",
     TEXT_CUT_EDGES = "Arrondir les Angles de l'Icône (Bords Lisses)",
+    TEXT_VERSION_ALERT = "Une nouvelle version (V%s) est disponible ! Veuillez mettre à jour l'addon pour éviter des erreurs.",
     TEXT_RESET_BTN  = "Réinitialiser"
 }
 -- ===========================================================================
@@ -200,6 +204,7 @@ addonTable.Locales["deDE"] = {
     TEXT_BROWSE_BTN = "Durchsuchen...",
     TEXT_COLOR_ALPHA = "Symbolfarbe-Deckkraft: ",
     TEXT_CUT_EDGES = "Symbolränder abrunden (Glatte Ecken)",
+    TEXT_VERSION_ALERT = "Eine neuere Version (V%s) ist verfügbar! Bitte aktualisiere das Addon, um Skriptfehler zu vermeiden.",
     TEXT_RESET_BTN  = "Standard zurücksetzen"
 }
 -- ===========================================================================
@@ -229,5 +234,6 @@ addonTable.Locales["jaJP"] = {
     TEXT_BROWSE_BTN = "参照...",
     TEXT_COLOR_ALPHA = "アイコンの色の不透明度：",
     TEXT_CUT_EDGES = "アイコンの角を切り落とす（丸みのあるエッジ）：",
+    TEXT_VERSION_ALERT = "新しいバージョン（V%s）が利用可能です！スクリプトエラーを防ぐためにアドオンを更新してください。",
     TEXT_RESET_BTN  = "デフォルトに戻す"
 }

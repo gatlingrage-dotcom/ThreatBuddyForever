@@ -396,12 +396,11 @@ end
 addonTable.UpdateSingleWidgetData = UpdateSingleWidgetData
 
 -- ===========================================================================
--- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS
+-- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS (LOCALIZED)
 -- ===========================================================================
 local commPrefix = "TBF_VERSION_CHECK"
-local versionAlertPlayed = false -- Only show the alert once per login session
+local versionAlertPlayed = false
 
--- Register a secure communication prefix with the game engine
 C_ChatInfo.RegisterAddonMessagePrefix(commPrefix)
 
 local commFrame = CreateFrame("Frame")
@@ -410,38 +409,72 @@ commFrame:RegisterEvent("GROUP_ROSTER_UPDATE")
 commFrame:RegisterEvent("CHAT_MSG_ADDON")
 
 commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
-    if event == "PLAYER_LOGIN" then
-        -- Automatically broadcast your version number upon logging in or reloading
-        if IsInGroup() then
-            local targetChannel = IsInRaid() and "RAID" or "PARTY"
-            C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
-        end
-        
-    elseif event == "GROUP_ROSTER_UPDATE" then
-        -- Sync up with teammates whenever someone new joins your dungeon pack
+    if event == "PLAYER_LOGIN" or event == "GROUP_ROSTER_UPDATE" then
         if IsInGroup() then
             local targetChannel = IsInRaid() and "RAID" or "PARTY"
             C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
         end
         
     elseif event == "CHAT_MSG_ADDON" and prefix == commPrefix then
-        -- Catch incoming version messages from other group players safely
         local myName = UnitName("player") .. "-" .. GetRealmName():gsub(" ", "")
-        if sender == myName then return end -- Ignore your own broadcast packets
+        if sender == myName then return end
         
-        -- Compare version strings safely using protected number evaluations
         if text and addonTable.Version and not versionAlertPlayed then
-            -- Clean and break version strings down (e.g. "2.0.0" -> 200)
             local currentNum = tonumber(addonTable.Version:gsub("%.", "")) or 200
             local incomingNum = tonumber(text:gsub("%.", "")) or 200
             
             if incomingNum > currentNum then
                 versionAlertPlayed = true
-                -- Broadcast a clean print alert notice right into your localized chat frame console
+                
                 C_Timer.After(3.0, function()
-                    print(string.format("|cff00ff00ThreatBuddyForever:|r A newer version (|cffffd100V%s|r) is available! Please update your addon to prevent script errors.", text))
+                    -- LOCALIZED TRANSLATION ENGINE COUPLING HOOK:
+                    -- Fetches the clean translation string dynamically based on the user's active client language profile
+                    local alertTextTemplate = addonTable.GetFallbackText and addonTable.GetFallbackText("TEXT_VERSION_ALERT") or "A newer version (V%s) is available!"
+                    
+                    print(string.format("|cff00ff00ThreatBuddyForever:|r " .. alertTextTemplate, text))
                 end)
             end
         end
+    end
+end)
+
+-- HIGH-PERFORMANCE UPDATER TICKER THROTTLES (AUTOMATED ROLE PIPELINE SYNCD)
+local elapsedTimer = 0
+local eventFrame = CreateFrame("Frame")
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
+eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+-- NEW ROLE EVENT CHANNEL: Fires instantly whenever you swap group roles or switch specialization profiles
+eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
+
+eventFrame:SetScript("OnUpdate", function(_, elapsed)
+    if not addonTable.GetDB or not addonTable.GetActiveTexture then return end
+    local currentDB = addonTable.GetDB()  
+    if not currentDB or not currentDB.updateThrottle then return end
+    elapsedTimer = elapsedTimer + elapsed
+    if elapsedTimer >= currentDB.updateThrottle then 
+        elapsedTimer = 0 
+        if InCombatLockdown() or next(addonTable.activeWidgets) then 
+            TTP_RefreshAllNameplates() 
+        end 
+    end
+end)
+
+eventFrame:SetScript("OnEvent", function(_, event, arg1)
+    if event == "PLAYER_REGEN_ENABLED" then
+        if addonTable.activeWidgets then
+            for unit, frame in pairs(addonTable.activeWidgets) do 
+                if frame then addonTable.RecycleSignalWidget(frame) end
+                addonTable.activeWidgets[unit] = nil
+            end
+        end
+        if addonTable.soundCooldowns then wipe(addonTable.soundCooldowns) end
+    elseif event == "PLAYER_ROLES_ASSIGNED" then
+        -- INSTANT INVERSION SKIN SYNC: Forcefully updates indicator color nodes on your active target widgets
+        if type(TTP_RefreshAllNameplates) == "function" then
+            TTP_RefreshAllNameplates()
+        end
+    elseif (event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED") then 
+        TTP_RefreshAllNameplates() 
     end
 end)

@@ -6,6 +6,14 @@ All notable changes to **ThreatBuddyForever** will be documented in this file. T
 # Changelog - ThreatBuddyForever 2.0
 
 All notable changes to this project are documented in this file.
+## - v2.2.0.4 - beta
+## - 2026-09-30
+
+### 🚀 Added
+- **Global Localization Mapping for Version Alerts:** Integrated the communication network channel with our dynamic translation arrays. Version warning notifications are now accurately translated into English, Portuguese, Spanish, Italian, French, German, and Japanese.
+- **Automated Tank/DPS Core Inversion Pipeline:** Hooked your rendering color maps directly into Blizzard's native role coordinator API (`UnitGroupRolesAssigned`). The addon automatically tracks your grouping status and specializations, instantly swapping color profiles without needing any manual configurations or clicks.
+- **`PLAYER_ROLES_ASSIGNED` Event Tracking:** Integrated an immediate spec-swap listener loop to refresh nameplate indicators the exact millisecond group roles update inside instances.
+
 
 ---
 ## - v2.2.0.3 - beta

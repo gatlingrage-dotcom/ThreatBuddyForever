@@ -6,9 +6,15 @@ All notable changes to **ThreatBuddyForever** will be documented in this file. T
 # Changelog - ThreatBuddyForever 2.0
 
 All notable changes to this project are documented in this file.
+## - v2.2.0.5-beta
+## - 2026-10-1
+### 🔧 Fixed
+- **Legacy Addon Message Broadcasting Fix:** Resolved a fatal crash (`attempt to call a nil value`) when entering instanced groups on legacy game clients. Replaced raw `C_ChatInfo.SendAddOnMessage` executions with a flexible fallback matrix that detects classic global namespace functions automatically.
+- **Beta Channel String Truncation Patch:** Updated the communication version scanner to cleanly strip non-numeric character strings (like `-beta` flags), allowing version numbers to be compared safely.
+
+
 ## - v2.2.0.4 - beta
 ## - 2026-09-30
-
 ### 🚀 Added
 - **Global Localization Mapping for Version Alerts:** Integrated the communication network channel with our dynamic translation arrays. Version warning notifications are now accurately translated into English, Portuguese, Spanish, Italian, French, German, and Japanese.
 - **Automated Tank/DPS Core Inversion Pipeline:** Hooked your rendering color maps directly into Blizzard's native role coordinator API (`UnitGroupRolesAssigned`). The addon automatically tracks your grouping status and specializations, instantly swapping color profiles without needing any manual configurations or clicks.

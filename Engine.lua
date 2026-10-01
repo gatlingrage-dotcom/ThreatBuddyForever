@@ -396,12 +396,17 @@ end
 addonTable.UpdateSingleWidgetData = UpdateSingleWidgetData
 
 -- ===========================================================================
--- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS (LOCALIZED)
+-- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS (LOCALIZED & CRASH-PROOF)
 -- ===========================================================================
 local commPrefix = "TBF_VERSION_CHECK"
 local versionAlertPlayed = false
 
-C_ChatInfo.RegisterAddonMessagePrefix(commPrefix)
+-- Safe multi-expansion prefix registration
+if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+    C_ChatInfo.RegisterAddonMessagePrefix(commPrefix)
+elseif RegisterAddonMessagePrefix then
+    RegisterAddonMessagePrefix(commPrefix)
+end
 
 local commFrame = CreateFrame("Frame")
 commFrame:RegisterEvent("PLAYER_LOGIN")
@@ -412,7 +417,15 @@ commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
     if event == "PLAYER_LOGIN" or event == "GROUP_ROSTER_UPDATE" then
         if IsInGroup() then
             local targetChannel = IsInRaid() and "RAID" or "PARTY"
-            C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
+            
+            -- SAFE COMM BROADCAST FALLBACK CHECK:
+            -- Automatically checks whether the game engine uses modern C_ChatInfo 
+            -- or the classic global namespace function to prevent fatal script crashes.
+            if C_ChatInfo and C_ChatInfo.SendAddOnMessage then
+                C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
+            elseif SendAddOnMessage then
+                SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
+            end
         end
         
     elseif event == "CHAT_MSG_ADDON" and prefix == commPrefix then
@@ -420,23 +433,22 @@ commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
         if sender == myName then return end
         
         if text and addonTable.Version and not versionAlertPlayed then
-            local currentNum = tonumber(addonTable.Version:gsub("%.", "")) or 200
-            local incomingNum = tonumber(text:gsub("%.", "")) or 200
+            -- Clean out alpha-numeric flags like "-beta" to allow solid numeric version calculations
+            local currentNum = tonumber(addonTable.Version:gsub("[^%d]", "")) or 200
+            local incomingNum = tonumber(text:gsub("[^%d]", "")) or 200
             
             if incomingNum > currentNum then
                 versionAlertPlayed = true
                 
                 C_Timer.After(3.0, function()
-                    -- LOCALIZED TRANSLATION ENGINE COUPLING HOOK:
-                    -- Fetches the clean translation string dynamically based on the user's active client language profile
                     local alertTextTemplate = addonTable.GetFallbackText and addonTable.GetFallbackText("TEXT_VERSION_ALERT") or "A newer version (V%s) is available!"
-                    
                     print(string.format("|cff00ff00ThreatBuddyForever:|r " .. alertTextTemplate, text))
                 end)
             end
         end
     end
 end)
+
 
 -- HIGH-PERFORMANCE UPDATER TICKER THROTTLES (AUTOMATED ROLE PIPELINE SYNCD)
 local elapsedTimer = 0

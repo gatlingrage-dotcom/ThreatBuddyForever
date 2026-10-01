@@ -7,5 +7,8 @@
 ## X-Category: Combat
 
 Localization.lua
-ThreatBuddyForever.lua
-Options.lua
+Themes.lua
+Utils.lua
+Core.lua
+Engine.lua
+ThreatBuddyForeverOptions.lua

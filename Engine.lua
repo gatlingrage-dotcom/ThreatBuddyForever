@@ -41,7 +41,6 @@ local function EstimateFluidOffTargetThreat(unit, currentStatus)
     elseif highestGroupStatus == 2 or highestGroupStatus == 1 then return 55 end
     return 20 
 end
-
 -- HIGH-SPEED TEXTURE & COLOR INTERPOLATOR (V8.0.0 - SINGLE-LINE ARRAY EXTRACTION)
 UpdateSingleWidgetData = function(frame, unit)
     local isTestFrame = (unit == "test")
@@ -156,8 +155,8 @@ UpdateSingleWidgetData = function(frame, unit)
 
     -- Assign direct colors arrays cleanly
     if not isTestFrame then
-        if isTaunted then 
-            displayColor = { 0.00, 0.85, 1.00 } -- Taunt Blue
+        if playerIsTank and isTaunted then 
+            displayColor = { 0.00, 0.85, 1.00 } -- Taunt Blue (TANK ONLY)
         elseif playerIsTank then
             if status == 3 or finalDisplayValue >= 100 then displayColor = { 0.10, 0.85, 0.10 } -- Good Green
             elseif status == 1 or status == 2 or finalDisplayValue >= 75 then displayColor = { 1.00, 0.55, 0.00 } -- Warn Amber
@@ -169,7 +168,7 @@ UpdateSingleWidgetData = function(frame, unit)
         end
     end
 
-    if isTaunted then 
+    if playerIsTank and isTaunted then 
         frame.text:SetText(addonTable.SafeGetText("STATUS_TAUNT")) 
     else 
         frame.text:SetText(finalDisplayValue .. "%") 
@@ -185,8 +184,7 @@ UpdateSingleWidgetData = function(frame, unit)
     local masterTextAlpha = currentDB.widgetAlpha or 1.0
     local iconAlphaSliderValue = currentDB.colorAlpha or 1.0
 
-    -- BULLETPROOF EXPLICIT SINGLE-LINE UNPACK EXTRACTION:
-    -- Forces variables onto separate evaluation tracks to prevent table cross-pollution crashes.
+    -- FIXED: Unpack explicit indexing layers correctly to protect math channels
     local r = 1
     local g = 1
     local b = 1
@@ -207,17 +205,13 @@ UpdateSingleWidgetData = function(frame, unit)
     frame.text:SetAlpha(masterTextAlpha)
 
     -- 2. DUAL-CHANNEL ICON LAYER MATRIX RESOLVER:
-    -- Dynamically maps properties to the texture file that matches your checkbox selection
     if activeTexture then
         local correctedTexture = tonumber(activeTexture) or activeTexture
         
-        -- Determine active visual drawing target nodes instantly
         local activeLayer = currentDB.cutIconEdges and frame.signalMasked or frame.signal
         local inactiveLayer = currentDB.cutIconEdges and frame.signal or frame.signalMasked
         
-        -- Keep inactive channels locked down to clear background artifacting clutter
         inactiveLayer:Hide()
-        
         activeLayer:SetTexture(correctedTexture)
         
         -- DYNAMIC BYPASS MATRIX:
@@ -235,7 +229,6 @@ UpdateSingleWidgetData = function(frame, unit)
     
     if not frame:IsShown() then frame:Show() end
 end
-
 
 -- MASTER MULTI-NAMEPLATE ITERATOR LOOP (V7.5.0 - DUNGEON SECRET STRING SAFE)
 function TTP_RefreshAllNameplates()
@@ -266,12 +259,10 @@ function TTP_RefreshAllNameplates()
                 
                 local skipMob = false
                 if currentDB.filterTrivial then
-                    -- DUNGEON TAINT PROTECTION WRAPPER:
-                    -- Wraps both UnitClassification and UnitName inside a protected call.
-                    -- If a dungeon mob returns a protected <secret string> for its type or name, 
-                    -- the pcall catches it instantly and skips filtering to prevent a fatal UI crash.
+                    -- DUNGEON TAINT PROTECTION WRAPPER: Safe check matrix for legacy baselines
                     local success, shouldSkip = pcall(function()
-                        if UnitClassification and UnitClassification(unit) == "trivial" then
+                        local classification = UnitClassification and UnitClassification(unit)
+                        if classification == "trivial" then
                             return true
                         end
                         
@@ -330,14 +321,13 @@ function TTP_RefreshAllNameplates()
         end 
     end
 end
-
-
 -- HIGH-PERFORMANCE UPDATER TICKER THROTTLES
 local elapsedTimer = 0
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
 eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
+eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
 
 eventFrame:SetScript("OnUpdate", function(_, elapsed)
     if not addonTable.GetDB or not addonTable.GetActiveTexture then return end
@@ -361,6 +351,10 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
             end
         end
         if addonTable.soundCooldowns then wipe(addonTable.soundCooldowns) end
+    elseif event == "PLAYER_ROLES_ASSIGNED" then
+        if type(TTP_RefreshAllNameplates) == "function" then
+            TTP_RefreshAllNameplates()
+        end
     elseif (event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED") then 
         TTP_RefreshAllNameplates() 
     end
@@ -401,7 +395,6 @@ addonTable.UpdateSingleWidgetData = UpdateSingleWidgetData
 local commPrefix = "TBF_VERSION_CHECK"
 local versionAlertPlayed = false
 
--- Safe multi-expansion prefix registration
 if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
     C_ChatInfo.RegisterAddonMessagePrefix(commPrefix)
 elseif RegisterAddonMessagePrefix then
@@ -418,9 +411,6 @@ commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
         if IsInGroup() then
             local targetChannel = IsInRaid() and "RAID" or "PARTY"
             
-            -- SAFE COMM BROADCAST FALLBACK CHECK:
-            -- Automatically checks whether the game engine uses modern C_ChatInfo 
-            -- or the classic global namespace function to prevent fatal script crashes.
             if C_ChatInfo and C_ChatInfo.SendAddOnMessage then
                 C_ChatInfo.SendAddOnMessage(commPrefix, addonTable.Version, targetChannel)
             elseif SendAddOnMessage then
@@ -433,7 +423,6 @@ commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
         if sender == myName then return end
         
         if text and addonTable.Version and not versionAlertPlayed then
-            -- Clean out alpha-numeric flags like "-beta" to allow solid numeric version calculations
             local currentNum = tonumber(addonTable.Version:gsub("[^%d]", "")) or 200
             local incomingNum = tonumber(text:gsub("[^%d]", "")) or 200
             
@@ -446,47 +435,5 @@ commFrame:SetScript("OnEvent", function(_, event, prefix, text, channel, sender)
                 end)
             end
         end
-    end
-end)
-
-
--- HIGH-PERFORMANCE UPDATER TICKER THROTTLES (AUTOMATED ROLE PIPELINE SYNCD)
-local elapsedTimer = 0
-local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-eventFrame:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-eventFrame:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
--- NEW ROLE EVENT CHANNEL: Fires instantly whenever you swap group roles or switch specialization profiles
-eventFrame:RegisterEvent("PLAYER_ROLES_ASSIGNED")
-
-eventFrame:SetScript("OnUpdate", function(_, elapsed)
-    if not addonTable.GetDB or not addonTable.GetActiveTexture then return end
-    local currentDB = addonTable.GetDB()  
-    if not currentDB or not currentDB.updateThrottle then return end
-    elapsedTimer = elapsedTimer + elapsed
-    if elapsedTimer >= currentDB.updateThrottle then 
-        elapsedTimer = 0 
-        if InCombatLockdown() or next(addonTable.activeWidgets) then 
-            TTP_RefreshAllNameplates() 
-        end 
-    end
-end)
-
-eventFrame:SetScript("OnEvent", function(_, event, arg1)
-    if event == "PLAYER_REGEN_ENABLED" then
-        if addonTable.activeWidgets then
-            for unit, frame in pairs(addonTable.activeWidgets) do 
-                if frame then addonTable.RecycleSignalWidget(frame) end
-                addonTable.activeWidgets[unit] = nil
-            end
-        end
-        if addonTable.soundCooldowns then wipe(addonTable.soundCooldowns) end
-    elseif event == "PLAYER_ROLES_ASSIGNED" then
-        -- INSTANT INVERSION SKIN SYNC: Forcefully updates indicator color nodes on your active target widgets
-        if type(TTP_RefreshAllNameplates) == "function" then
-            TTP_RefreshAllNameplates()
-        end
-    elseif (event == "NAME_PLATE_UNIT_ADDED" or event == "NAME_PLATE_UNIT_REMOVED") then 
-        TTP_RefreshAllNameplates() 
     end
 end)

@@ -1,14 +1,14 @@
 ## Interface: 16001
 ## Title: ThreatBuddyForever |cff00ff00V2.0|r
-## Version: 2.0.0
+## Version: 2.2.0
 ## Author: MeiaDeLeite
 ## Notes: A smart multi-target threat signal light with Tank/DPS auto-inversion, audio alerts, and per-character profiles.
 ## SavedVariables: ThreatBuddyForeverDB
 ## X-Category: Combat
 
 Localization.lua
-Themes.lua
 Utils.lua
-Core.lua
+Themes.lua
 Engine.lua
+Core.lua
 ThreatBuddyForeverOptions.lua

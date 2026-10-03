@@ -6,6 +6,16 @@ All notable changes to **ThreatBuddyForever** will be documented in this file. T
 # Changelog - ThreatBuddyForever 2.0
 
 All notable changes to this project are documented in this file.
+
+## - v2.2.1
+## - 2026-10-03
+### 🔧 Fixed
+- **Role-Isolated Taunt Alerts:** Restricted the `TAUNT` text override and Cyan color formatting exclusively to players actively flagged as a **Tank**. DPS and Healers will now cleanly see their standard native threat tracking percentages on taunted targets.
+- **72% Threat UI Freeze Resolved:** Corrected a type mismatch in the layout matrix engine where full array tables were mistakenly assigned to color channels instead of index pointers (`[1]`, `[2]`, `[3]`). Threat display calculations now adjust smoothly between **0% and 100%** without hanging.
+- **TOC Initialization Loading Order:** Rearranged structural load steps inside `ThreatBuddyForever.toc`. Library utilities (`Utils.lua`) and directory trackers (`Engine.lua`) now compile completely before driving dependent execution panels.
+- **Beta String Version Mismatch:** Reset the global communication hash tracking string to clear trailing character strings (`-beta`), preventing system version channels from throwing false outdated addon alerts.
+- **UnitClassification Safety Check:** Added strict string containment wrappers to the trivial mob nameplate filter to prevent fatal runtime script errors if the game client returns `nil` strings.
+
 ## - v2.2.0
 ## - 2026-10-1
 ### 🔧 Fixed

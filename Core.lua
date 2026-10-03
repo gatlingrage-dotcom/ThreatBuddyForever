@@ -1,7 +1,6 @@
 local ADDON_NAME, addonTable = ...
 
--- NEW: Current development release string token
-addonTable.Version = "2.2.0.5-beta"
+addonTable.Version = "2.2.1"
 
 -- Expose internal caching nodes safely across separate files
 addonTable.activeWidgets = addonTable.activeWidgets or {}

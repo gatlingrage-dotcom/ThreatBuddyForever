@@ -40,7 +40,7 @@ bootFrame:SetScript("OnEvent", function(_, event, arg1)
         
         -- Establish resilient system defaults
         db.widgetScale = db.widgetScale or 1.0
-        db.xOffset = db.xOffset or 10
+        db.xOffset = db.xOffset or 0
         db.enableGlow = (db.enableGlow ~= false)
         db.hideWhileSolo = (db.hideWhileSolo == true)
         db.showSoloWithPet = (db.showSoloWithPet ~= false)
@@ -102,7 +102,7 @@ bootFrame:SetScript("OnEvent", function(_, event, arg1)
         
         -- Establish resilient system defaults
         db.widgetScale = db.widgetScale or 1.0
-        db.xOffset = db.xOffset or 10
+        db.xOffset = db.xOffset or 0
         db.enableGlow = (db.enableGlow ~= false)
         db.hideWhileSolo = (db.hideWhileSolo == true)
         db.showSoloWithPet = (db.showSoloWithPet ~= false)

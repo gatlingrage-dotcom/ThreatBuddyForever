@@ -8,6 +8,8 @@ local IsInGroup, IsInRaid, InCombatLockdown, PlaySound = IsInGroup, IsInRaid, In
 local string_find, type = string.find, type
 
 local UpdateSingleWidgetData
+-- Minimum distance from the nameplate; the Lateral Distance slider adds to it
+addonTable.BaseOffset = 50
 -- DYNAMIC OFFTARGET ESTIMATION MATRIX
 local function EstimateFluidOffTargetThreat(unit, currentStatus)
     if currentStatus == 3 then return 100
@@ -41,7 +43,7 @@ local function EstimateFluidOffTargetThreat(unit, currentStatus)
     elseif highestGroupStatus == 2 or highestGroupStatus == 1 then return 55 end
     return 20 
 end
--- HIGH-SPEED TEXTURE & COLOR INTERPOLATOR (V8.0.0 - SINGLE-LINE ARRAY EXTRACTION)
+-- HIGH-SPEED TEXTURE & COLOR INTERPOLATOR (V8.1.0 - AGGRO LOSS SCALING)
 UpdateSingleWidgetData = function(frame, unit)
     local isTestFrame = (unit == "test")
     if not isTestFrame then
@@ -77,7 +79,7 @@ UpdateSingleWidgetData = function(frame, unit)
             local success, isTargetingMe, isTargetingTeam = pcall(function()
                 if UnitIsUnit("player", targetToken) then
                     return true, false
-                elseif status == 0 and not UnitIsUnit("pet", targetToken) then
+                elseif not UnitIsUnit("pet", targetToken) then
                     if addonTable.IsUnitEngagedWithMyGroup(unit) then
                         return false, true
                     end
@@ -94,22 +96,30 @@ UpdateSingleWidgetData = function(frame, unit)
 
     local isCurrentTarget = isTestFrame
     if not isTestFrame then isCurrentTarget = UnitIsUnit(unit, "target") end
-    
-    local currentScale = currentDB.widgetScale or 1.0
-    if isCurrentTarget and currentDB.highlightTarget then
-        frame:SetScale(currentScale * (currentDB.targetScale or 1.35))
-        frame.text:SetFont(STANDARD_TEXT_FONT, 12, "THICKOUTLINE")
-    else
-        frame:SetScale(currentScale) 
-        frame.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
-    end
 
+    -- Detect Tank Role Configuration
     local playerIsTank = false
     if addonTable.IsPlayerTank and addonTable.IsPlayerTank() then
         playerIsTank = true
     else
         local assignedRole = UnitGroupRolesAssigned and UnitGroupRolesAssigned("player")
         if assignedRole == "TANK" then playerIsTank = true end
+    end
+
+    -- Track if a tank has completely lost aggro on a taunted mob (Status < 3)
+    local tankLostTauntedAggro = playerIsTank and isTaunted and (status < 3)
+
+    -- DYNAMIC SIZE SCALE LAYER: Automatically grows 40% larger if you lose aggro!
+    local currentScale = currentDB.widgetScale or 1.0
+    if tankLostTauntedAggro then
+        frame:SetScale(currentScale * (currentDB.targetScale or 1.35) * 1.40) -- Extra 40% size boost to find the mob!
+        frame.text:SetFont(STANDARD_TEXT_FONT, 14, "THICKOUTLINE")
+    elseif isCurrentTarget and currentDB.highlightTarget then
+        frame:SetScale(currentScale * (currentDB.targetScale or 1.35))
+        frame.text:SetFont(STANDARD_TEXT_FONT, 12, "THICKOUTLINE")
+    else
+        frame:SetScale(currentScale) 
+        frame.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
     end
 
     local targetPercent = 0
@@ -153,10 +163,10 @@ UpdateSingleWidgetData = function(frame, unit)
     end
     local finalDisplayValue = math_floor(frame.currentThreatDisplayValue)
 
-    -- Assign direct colors arrays cleanly
+    -- Assign direct colors arrays cleanly with persistence overrides
     if not isTestFrame then
         if playerIsTank and isTaunted then 
-            displayColor = { 0.00, 0.85, 1.00 } -- Taunt Blue (TANK ONLY)
+            displayColor = { 0.00, 0.85, 1.00 } -- Persist Taunt Blue even if threat status drops
         elseif playerIsTank then
             if status == 3 or finalDisplayValue >= 100 then displayColor = { 0.10, 0.85, 0.10 } -- Good Green
             elseif status == 1 or status == 2 or finalDisplayValue >= 75 then displayColor = { 1.00, 0.55, 0.00 } -- Warn Amber
@@ -184,11 +194,8 @@ UpdateSingleWidgetData = function(frame, unit)
     local masterTextAlpha = currentDB.widgetAlpha or 1.0
     local iconAlphaSliderValue = currentDB.colorAlpha or 1.0
 
-    -- FIXED: Unpack explicit indexing layers correctly to protect math channels
-    local r = 1
-    local g = 1
-    local b = 1
-    
+    -- Extract numerical parameters cleanly to secure indexing
+    local r, g, b = 1, 1, 1
     if type(displayColor) == "table" and #displayColor >= 3 then
         r = displayColor[1]
         g = displayColor[2]
@@ -200,11 +207,11 @@ UpdateSingleWidgetData = function(frame, unit)
         b = fallbackColor[3]
     end
 
-    -- 1. TEXT LAYER: Only influenced by the Master Threat Opacity slider tracking channel
+    -- 1. TEXT LAYER
     frame.text:SetTextColor(r, g, b, 1.0)
     frame.text:SetAlpha(masterTextAlpha)
 
-    -- 2. DUAL-CHANNEL ICON LAYER MATRIX RESOLVER:
+    -- 2. DUAL-CHANNEL ICON LAYER MATRIX RESOLVER
     if activeTexture then
         local correctedTexture = tonumber(activeTexture) or activeTexture
         
@@ -214,7 +221,6 @@ UpdateSingleWidgetData = function(frame, unit)
         inactiveLayer:Hide()
         activeLayer:SetTexture(correctedTexture)
         
-        -- DYNAMIC BYPASS MATRIX:
         if iconAlphaSliderValue == 0 then
             activeLayer:SetVertexColor(1, 1, 1, 1.0)
         else
@@ -228,6 +234,12 @@ UpdateSingleWidgetData = function(frame, unit)
     end
     
     if not frame:IsShown() then frame:Show() end
+end
+-- Picks the rightmost known nameplate piece. Nameplate frames are restricted, so they must not be measured, only anchored to.
+local function FindRightmostFrame(anchor)
+    local level = anchor.LevelFrame
+    if level and level:IsShown() then return level end
+    return anchor.HealthBarsContainer or anchor.healthBar or anchor
 end
 
 -- MASTER MULTI-NAMEPLATE ITERATOR LOOP (V7.5.0 - DUNGEON SECRET STRING SAFE)
@@ -259,7 +271,6 @@ function TTP_RefreshAllNameplates()
                 
                 local skipMob = false
                 if currentDB.filterTrivial then
-                    -- DUNGEON TAINT PROTECTION WRAPPER: Safe check matrix for legacy baselines
                     local success, shouldSkip = pcall(function()
                         local classification = UnitClassification and UnitClassification(unit)
                         if classification == "trivial" then
@@ -295,14 +306,19 @@ function TTP_RefreshAllNameplates()
                         activeWidgets[unit] = frame
                     end
                     
-                    frame:SetParent(nameplate)
+                    frame:SetParent(anchor)
                     frame.unit = unit 
-                    
-                    frame:ClearAllPoints() 
-                    frame:SetPoint("LEFT", anchor, "RIGHT", currentDB.xOffset or 10, 0) 
                     
                     if not frame:IsShown() then frame:Show() end
                     UpdateSingleWidgetData(frame, unit)
+
+                    -- Offsets are multiplied by the frame's own scale, so divide it out to keep a constant gap
+                    local frameScale = frame:GetScale()
+                    if not frameScale or frameScale <= 0 then frameScale = 1 end
+                    frame:ClearAllPoints() 
+                    local pointFrame = FindRightmostFrame(anchor)
+                    frame:SetFrameLevel(anchor:GetFrameLevel() + 20)
+                    frame:SetPoint("LEFT", pointFrame, "RIGHT", (addonTable.BaseOffset + (currentDB.xOffset or 0)) / frameScale, 0) 
 
                 else 
                     if activeWidgets[unit] then 
@@ -389,9 +405,7 @@ end
 
 addonTable.UpdateSingleWidgetData = UpdateSingleWidgetData
 
--- ===========================================================================
--- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS (LOCALIZED & CRASH-PROOF)
--- ===========================================================================
+-- IN-GAME VERSION CHECKING & COMM NETWORKING CHANNELS
 local commPrefix = "TBF_VERSION_CHECK"
 local versionAlertPlayed = false
 

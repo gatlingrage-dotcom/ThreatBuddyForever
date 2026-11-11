@@ -244,7 +244,6 @@ nextBtn:SetSize(28, 22) nextBtn:SetPoint("LEFT", choiceBtn, "RIGHT", 4, 0) nextB
 local scaleSlider = CreateFrame("Slider", "TBFScaleSlider", scrollChild, "OptionsSliderTemplate")
 local targetScaleSlider = CreateFrame("Slider", "TBFTargetScaleSlider", scrollChild, "OptionsSliderTemplate")
 local offsetSlider = CreateFrame("Slider", "TBFOffsetSlider", scrollChild, "OptionsSliderTemplate")
-local lagSlider = CreateFrame("Slider", "TBFLagSlider", scrollChild, "OptionsSliderTemplate")
 local alphaSlider = CreateFrame("Slider", "TBFAlphaSlider", scrollChild, "OptionsSliderTemplate")
 -- NEW SLIDER: Controls icon texture opacity independently from the text parameters
 local colorAlphaSlider = CreateFrame("Slider", "TBFColorAlphaSlider", scrollChild, "OptionsSliderTemplate")
@@ -264,12 +263,7 @@ offsetSlider:SetWidth(200) offsetSlider:SetMinMaxValues(0, 50) offsetSlider:SetV
 _G[offsetSlider:GetName() .. "Low"]:SetText("0") _G[offsetSlider:GetName() .. "High"]:SetText("50")
 _G[offsetSlider:GetName() .. "Text"]:ClearAllPoints() _G[offsetSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", offsetSlider, "TOPLEFT", 0, 6)
 
-lagSlider:SetPoint("TOPLEFT", offsetSlider, "BOTTOMLEFT", 0, -55)
-lagSlider:SetWidth(200) lagSlider:SetMinMaxValues(0.02, 0.30) lagSlider:SetValueStep(0.02) lagSlider:SetObeyStepOnDrag(true)
-_G[lagSlider:GetName() .. "Low"]:SetText("0.02s") _G[lagSlider:GetName() .. "High"]:SetText("0.30s")
-_G[lagSlider:GetName() .. "Text"]:ClearAllPoints() _G[lagSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", lagSlider, "TOPLEFT", 0, 6)
-
-alphaSlider:SetPoint("TOPLEFT", lagSlider, "BOTTOMLEFT", 0, -55)
+alphaSlider:SetPoint("TOPLEFT", offsetSlider, "BOTTOMLEFT", 0, -55)
 alphaSlider:SetWidth(200) alphaSlider:SetMinMaxValues(0.10, 1.00) alphaSlider:SetValueStep(0.05) alphaSlider:SetObeyStepOnDrag(true)
 _G[alphaSlider:GetName() .. "Low"]:SetText("10%") _G[alphaSlider:GetName() .. "High"]:SetText("100%")
 _G[alphaSlider:GetName() .. "Text"]:ClearAllPoints() _G[alphaSlider:GetName() .. "Text"]:SetPoint("BOTTOMLEFT", alphaSlider, "TOPLEFT", 0, 6)
@@ -302,7 +296,6 @@ function addonTable.GetFallbackText(key)
         TEXT_SCALE = "Master Widget Size Scale: ",
         TEXT_TARSCALE = "Focus Target Highlights Scaling: ",
         TEXT_DIST = "Nameplate Horizontal Pixel Spacing Offset: ",
-        TEXT_LAG = "Nameplate Interface Scanner Throttle Ticks: ",
         TEXT_ALPHA = "Threat Indicator Opacity: ",
         TEXT_ICON_LABEL = "Custom Icon Name or Asset ID:",
         TEXT_BROWSE_BTN = "Browse...",
@@ -319,7 +312,7 @@ local function RefreshPanelStrings()
     
     if not GetText then return end
     
-    title:SetText("ThreatBuddyForever 2.0") sub:SetText(GetText("PANEL_SUB"))
+    title:SetText("ThreatBuddyForever " .. addonTable.Version) sub:SetText(GetText("PANEL_SUB"))
     _G[glowCheck:GetName() .. "Text"]:SetText(GetText("TEXT_GLOW")) _G[soloCheck:GetName() .. "Text"]:SetText(GetText("TEXT_SOLO"))
     _G[petCheck:GetName() .. "Text"]:SetText(GetText("TEXT_PET")) _G[soundCheck:GetName() .. "Text"]:SetText(GetText("TEXT_SOUND"))
     _G[highlightCheck:GetName() .. "Text"]:SetText(GetText("TEXT_HIGHLIGHT")) _G[filterCheck:GetName() .. "Text"]:SetText(GetText("TEXT_FILTER"))
@@ -342,7 +335,6 @@ local function RefreshPanelStrings()
         _G[scaleSlider:GetName() .. "Text"]:SetText(GetText("TEXT_SCALE") .. string.format("%.1f", currentDB.widgetScale))
         _G[targetScaleSlider:GetName() .. "Text"]:SetText(GetText("TEXT_TARSCALE") .. string.format("%.2fx", currentDB.targetScale or 1.35))
         _G[offsetSlider:GetName() .. "Text"]:SetText(GetText("TEXT_DIST") .. (currentDB.xOffset or 0) .. "px")
-        _G[lagSlider:GetName() .. "Text"]:SetText(GetText("TEXT_LAG") .. string.format("%.2fs", currentDB.updateThrottle or 0.08))
         _G[alphaSlider:GetName() .. "Text"]:SetText(GetText("TEXT_ALPHA") .. string.format("%d%%", math.floor((currentDB.widgetAlpha or 1.0) * 100)))
         _G[colorAlphaSlider:GetName() .. "Text"]:SetText(GetText("TEXT_COLOR_ALPHA") .. string.format("%d%%", math.floor((currentDB.colorAlpha or 1.0) * 100)))
 
@@ -371,7 +363,7 @@ charProfileCheck:SetScript("OnClick", function(self)
     if not ThreatBuddyForeverDB then return end ThreatBuddyForeverDB.useCharProfile = self:GetChecked() == true
     local currentDB = addonTable.GetDB() scaleSlider:SetValue(currentDB.widgetScale or 1.0)
     local targetScaleMultiplier = currentDB.targetScale or 1.35 targetScaleSlider:SetValue(targetScaleMultiplier)
-    offsetSlider:SetValue(currentDB.xOffset or 0) lagSlider:SetValue(currentDB.updateThrottle or 0.08)
+    offsetSlider:SetValue(currentDB.xOffset or 0)
     alphaSlider:SetValue(currentDB.widgetAlpha or 1.0) RefreshPanelStrings()
 end)
 
@@ -412,10 +404,6 @@ offsetSlider:SetScript("OnValueChanged", function(self, value)
     local rounded = math.floor(value) addonTable.GetDB().xOffset = rounded
     _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_DIST") .. rounded .. "px")
     if type(TTP_RefreshAllNameplates) == "function" then TTP_RefreshAllNameplates() end
-end)
-lagSlider:SetScript("OnValueChanged", function(self, value)
-    local rounded = math.floor((value * 100) + 0.5) / 100 addonTable.GetDB().updateThrottle = rounded
-    _G[self:GetName() .. "Text"]:SetText(addonTable.GetFallbackText("TEXT_LAG") .. string.format("%.2fs", rounded))
 end)
 alphaSlider:SetScript("OnValueChanged", function(self, value)
     local rounded = math.floor((value * 100) + 0.5) / 100 addonTable.GetDB().widgetAlpha = rounded
@@ -459,7 +447,7 @@ syncFrame:SetScript("OnEvent", function(_, event, arg1)
         glowCheck:SetChecked(currentDB.enableGlow) soloCheck:SetChecked(currentDB.hideWhileSolo) petCheck:SetChecked(currentDB.showSoloWithPet)
         soundCheck:SetChecked(currentDB.enableSound) highlightCheck:SetChecked(currentDB.highlightTarget) filterCheck:SetChecked(currentDB.filterTrivial)
         charProfileCheck:SetChecked(db.useCharProfile) scaleSlider:SetValue(currentDB.widgetScale or 1.0) targetScaleSlider:SetValue(currentDB.targetScale or 1.35)
-        offsetSlider:SetValue(currentDB.xOffset or 0) lagSlider:SetValue(currentDB.updateThrottle or 0.08)
+        offsetSlider:SetValue(currentDB.xOffset or 0)
         colorAlphaSlider:SetValue(currentDB.colorAlpha or 1.0)
         cutEdgesCheck:SetChecked(currentDB.cutIconEdges)
         alphaSlider:SetValue(currentDB.widgetAlpha or 1.0) 

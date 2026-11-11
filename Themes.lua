@@ -70,6 +70,24 @@ function addonTable.CreateNewSignalWidget()
     frame:SetSize(addonTable.IconSize, addonTable.IconSize)
     frame:SetFrameStrata("HIGH")
 
+    frame.wisp = frame:CreateTexture(nil, "OVERLAY", nil, 0)
+    frame.wisp:SetTexture("Interface\\AddOns\\ThreatBuddyForever\\Media\\ThreatWisp.tga")
+    frame.wisp:SetSize(addonTable.IconSize * 1.5, addonTable.IconSize * 2.1)
+    frame.wisp:SetPoint("CENTER", frame, "CENTER", 0, addonTable.IconSize * 0.48)
+    frame.wisp:SetBlendMode("ADD")
+    frame.wisp:SetAlpha(0)
+    frame.wisp:Hide()
+
+    -- Darnassus wisp creature display; the sprite remains visible while the model loads.
+    frame.wispModel = CreateFrame("PlayerModel", nil, frame)
+    frame.wispModel:SetSize(addonTable.IconSize * 2, addonTable.IconSize * 2)
+    frame.wispModel:SetPoint("CENTER", frame, "CENTER", 0, 0)
+    frame.wispModel:SetFrameLevel(frame:GetFrameLevel() + 1)
+    if frame.wispModel.SetParticlesEnabled then frame.wispModel:SetParticlesEnabled(true) end
+    if frame.wispModel.SetKeepModelOnHide then frame.wispModel:SetKeepModelOnHide(true) end
+    frame.wispModel:SetDisplayInfo(10045)
+    frame.wispModel:Hide()
+
     -- CHANNEL A: Standard crisp square icon layout
     frame.signal = frame:CreateTexture(nil, "ARTWORK", nil, 1) 
     frame.signal:SetSize(addonTable.IconSize, addonTable.IconSize)
@@ -86,7 +104,10 @@ function addonTable.CreateNewSignalWidget()
     end
 
     -- THE PERCENTAGE TEXT LAYER
-    frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge", 7)
+    frame.textLayer = CreateFrame("Frame", nil, frame)
+    frame.textLayer:SetAllPoints(frame)
+    frame.textLayer:SetFrameLevel(frame:GetFrameLevel() + 2)
+    frame.text = frame.textLayer:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge", 7)
     frame.text:SetPoint("CENTER", frame, "CENTER", 0, 0)
     frame.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
     frame.text:SetTextColor(1, 1, 1)
@@ -98,10 +119,11 @@ function addonTable.RecycleSignalWidget(frame)
     frame:Hide() 
     frame:ClearAllPoints() 
     frame.unit = nil
-    frame.combatStartTime = nil 
-    frame.currentThreatDisplayValue = 0
+    frame.currentThreatDisplayValue = nil
     if frame.signal then frame.signal:Hide() end
     if frame.signalMasked then frame.signalMasked:Hide() end
+    if frame.wisp then frame.wisp:Hide() end
+    if frame.wispModel then frame.wispModel:Hide() end
     table.insert(addonTable.widgetPool, frame)
 end
 

@@ -15,8 +15,10 @@ Instead of forcing you to stare at complex numerical tables, this addon attaches
 * **Independent Dual Opacity Sliders:** Opacity layers operate completely separately. The **Threat Indicator Opacity** slider controls number transparency, while the **Icon Texture Color Opacity** slider isolates the artwork fading levels.
 * **Native Artwork Bypass Matrix:** Pulling the Icon Opacity slider down to exactly **0%** switches the addon into Native Art Mode. This disables threat color tints and displays your chosen icon in its full original artwork colors while keeping the overlay percentage numbers dynamically colored.
 * **Corner-Clip Custom Option:** Toggle a new **"Clip Icon Corners (Smooth Rounded Edges)"** checkbox to apply a high-fidelity alpha portrait mask, cleanly rounding off square icon corners into smooth tokens.
-* **Cyan Neon Taunt Alert:** Turns the signal into a **Neon Cyan Blue** indicator and displays **`TAUNT`** while an enemy is mechanically hard-locked by a taunt ability.
-* **Dungeon Secret String & Taint Protection:** Features encapsulated protected calls (`pcall`) built directly into the scanner loops. This renders the addon completely immune to modern UI taint crashes caused by cross-faction PvP, Mythic+ affixes, or protected NPC names/classification tokens.
+* **Clean Threat Indicator:** Keeps the icon and threat-colored percentage uncluttered, with no solid backplate, rim, or extra text shadow.
+* **Animated Threat Wisps:** Tries the game's Darnassus wisp model (display ID 10045) above each indicator, with a transparent animated sprite behind it. The model keeps its native color; the sprite follows accessible threat colors or uses blue for protected or unavailable percentages. The Glow setting controls both layers.
+* **Tank Aggro-Loss Emphasis:** Enlarges indicators for enemies targeting a group member when you are tanking but do not have top threat. The addon reports the threat percentage rather than claiming a taunt occurred, since target information alone cannot confirm a taunt.
+* **Protected Threat Values:** Protected percentages are sent directly to the text display without threat calculations. Text uses an accessible threat status for role-aware color, checking the separate threat-status API when detailed status is unavailable or protected. If both statuses are protected or unavailable, it remains neutral. When no percentage is available, the indicator shows `--`. Threat-based alerts and scaling require an accessible status.
 * **In-Game Automatic Version Synchronization:** Uses addon communication network channels (`C_ChatInfo.SendAddOnMessage`) to cross-reference version hashes via party/raid packets. Automatically alerts players in chat if a teammate is running a newer codebase release.
 * **7-Language Support:** Localized at runtime for **English, Portuguese, Spanish, Italian, French, German, and Japanese**.
 
@@ -32,9 +34,10 @@ Type `/tbf` in chat to open the customized interface within WoW's native options
   * *Master Size (Scale):* Controls the baseline size of widgets (0.5x to 2.0x).
   * *Target Highlight Size:* Customizes your active target's widget size (1.0x to 2.5x).
   * *Lateral Distance:* Adjusts how many pixels to the right the widget sits away from the nameplate.
-  * *Update Frequency (Lag Control):* Slide down to `0.02s` for real-time precision (Zero Lag), or up to `0.30s` to maximize CPU performance.
   * *Threat Indicator Opacity:* Controls text percentage number fade levels (10% to 100%).
   * *Icon Texture Color Opacity:* Independently controls the overlay transparency of the icon artwork (0% to 100%).
+
+The update interval defaults to 0.08 seconds. Existing saved update intervals remain in effect, although the update-frequency slider has been removed.
 
 ---
 

@@ -41,8 +41,14 @@ end
 -- ACCELERATED GROUP COMBAT SEPARATION SCANNER
 function addonTable.IsUnitEngagedWithMyGroup(unit)
     if not UnitExists(unit) then return false end
-    if UnitThreatSituation("player", unit) then return true end
-    if UnitExists("pet") and UnitThreatSituation("pet", unit) then return true end
+    local playerThreat = UnitThreatSituation("player", unit)
+    if issecretvalue and issecretvalue(playerThreat) then return true end
+    if playerThreat ~= nil then return true end
+    if UnitExists("pet") then
+        local petThreat = UnitThreatSituation("pet", unit)
+        if issecretvalue and issecretvalue(petThreat) then return true end
+        if petThreat ~= nil then return true end
+    end
     
     if IsInGroup() or IsInRaid() then
         local targetToken = unit .. "target"
@@ -58,5 +64,27 @@ function addonTable.IsUnitEngagedWithMyGroup(unit)
             end
         end
     end
+    return false
+end
+
+function addonTable.IsUnitTargetingGroupMember(unit)
+    if not UnitExists(unit) then return false end
+    local targetToken = unit .. "target"
+    if not UnitExists(targetToken) or UnitIsUnit(targetToken, "player") or UnitIsUnit(targetToken, "pet") then
+        return false
+    end
+
+    for i = 1, 4 do
+        if UnitExists("party" .. i) and UnitIsUnit(targetToken, "party" .. i) then return true end
+        if UnitExists("partypet" .. i) and UnitIsUnit(targetToken, "partypet" .. i) then return true end
+    end
+
+    if IsInRaid() then
+        for i = 1, 40 do
+            if UnitExists("raid" .. i) and UnitIsUnit(targetToken, "raid" .. i) then return true end
+            if UnitExists("raidpet" .. i) and UnitIsUnit(targetToken, "raidpet" .. i) then return true end
+        end
+    end
+
     return false
 end

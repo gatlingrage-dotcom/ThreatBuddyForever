@@ -2,49 +2,28 @@ local ADDON_NAME, addonTable = ...
 
 -- HOT PATH CACHING: Cache local engine pointers to boost frame rendering speeds
 local UnitExists, UnitIsDead, UnitCanAttack = UnitExists, UnitIsDead, UnitCanAttack
-local UnitThreatSituation, UnitClass, UnitIsUnit = UnitThreatSituation, UnitClass, UnitIsUnit
-local GetTime, math_max, math_floor, type, pairs, next = GetTime, math.max, math.floor, type, pairs, next
+local UnitThreatSituation, UnitDetailedThreatSituation = UnitThreatSituation, UnitDetailedThreatSituation
+local UnitClass, UnitIsUnit = UnitClass, UnitIsUnit
+local GetTime, math_max, math_min, math_floor, math_sin, type, pairs, next = GetTime, math.max, math.min, math.floor, math.sin, type, pairs, next
 local IsInGroup, IsInRaid, InCombatLockdown, PlaySound = IsInGroup, IsInRaid, InCombatLockdown, PlaySound
 local string_find, type = string.find, type
 
 local UpdateSingleWidgetData
 -- Minimum distance from the nameplate; the Lateral Distance slider adds to it
 addonTable.BaseOffset = 50
--- DYNAMIC OFFTARGET ESTIMATION MATRIX
-local function EstimateFluidOffTargetThreat(unit, currentStatus)
-    if currentStatus == 3 then return 100
-    elseif currentStatus == 2 then return 90
-    elseif currentStatus == 1 then return 75 end
-    
-    local highestGroupStatus = 0
-    if UnitExists("pet") then 
-        highestGroupStatus = math_max(highestGroupStatus, UnitThreatSituation("pet", unit) or 0) 
-    end
-    
-    if IsInGroup() or IsInRaid() then
-        for i = 1, 4 do
-            if UnitExists("party" .. i) then 
-                highestGroupStatus = math_max(highestGroupStatus, UnitThreatSituation("party" .. i) or 0) 
-            end
-            if UnitExists("partypet" .. i) then 
-                highestGroupStatus = math_max(highestGroupStatus, UnitThreatSituation("partypet" .. i) or 0) 
-            end
-        end
-        if IsInRaid() then
-            for i = 1, 40 do 
-                if UnitExists("raid" .. i) then 
-                    highestGroupStatus = math_max(highestGroupStatus, UnitThreatSituation("raid" .. i) or 0) 
-                end 
-            end
-        end
-    end
-    
-    if highestGroupStatus == 3 then return nil
-    elseif highestGroupStatus == 2 or highestGroupStatus == 1 then return 55 end
-    return 20 
+
+local function ReadThreatNumber(value)
+    if issecretvalue and issecretvalue(value) then return nil end
+    if type(value) == "number" then return value end
 end
+
+local function IsPlayerTank()
+    if addonTable.IsPlayerTank and addonTable.IsPlayerTank() then return true end
+    return UnitGroupRolesAssigned and UnitGroupRolesAssigned("player") == "TANK" or false
+end
+
 -- HIGH-SPEED TEXTURE & COLOR INTERPOLATOR (V8.1.0 - AGGRO LOSS SCALING)
-UpdateSingleWidgetData = function(frame, unit)
+UpdateSingleWidgetData = function(frame, unit, context)
     local isTestFrame = (unit == "test")
     if not isTestFrame then
         if not UnitExists(unit) or UnitIsDead(unit) or not UnitCanAttack("player", unit) then 
@@ -52,16 +31,36 @@ UpdateSingleWidgetData = function(frame, unit)
         end
     end
     
-    local currentDB = addonTable.GetDB()
-    local activeTexture = addonTable.GetActiveTexture()
+    local currentDB = context and context.db or addonTable.GetDB()
+    local activeTexture
+    local playerIsTank
+    if context then
+        activeTexture = context.texture
+        playerIsTank = context.playerIsTank
+    else
+        activeTexture = addonTable.GetActiveTexture()
+        playerIsTank = IsPlayerTank()
+    end
     
-    local status = 0
-    local rawThreatPercentage = 0
+    local status
+    local rawThreatPercentage
+    local protectedThreatPercentage
+    local hasProtectedThreatPercentage = false
     if not isTestFrame then
-        local rawStatus, rawPercent = UnitThreatSituation("player", unit)
-        if rawStatus then
-            status = tonumber(rawStatus) or 0
-            rawThreatPercentage = tonumber(rawPercent) or 0
+        if UnitDetailedThreatSituation then
+            local _, detailedStatus, scaledPercent = UnitDetailedThreatSituation("player", unit)
+            status = ReadThreatNumber(detailedStatus)
+            if issecretvalue and issecretvalue(scaledPercent) then
+                protectedThreatPercentage = scaledPercent
+                hasProtectedThreatPercentage = true
+            else
+                rawThreatPercentage = ReadThreatNumber(scaledPercent)
+            end
+            if status == nil then
+                status = ReadThreatNumber(UnitThreatSituation("player", unit))
+            end
+        else
+            status = ReadThreatNumber(UnitThreatSituation("player", unit))
         end
     else
         status = 1
@@ -71,47 +70,24 @@ UpdateSingleWidgetData = function(frame, unit)
     -- Establish native threat color values directly
     local displayColor = { 1.00, 0.55, 0.00 } -- Default Warning Amber
 
-    local isTaunted = false
-    local isTargetingPlayer = false
-    if not isTestFrame then
+    local isTargetingGroupMember = false
+    if playerIsTank and not isTestFrame then
         local targetToken = unit .. "target"
         if UnitExists(targetToken) then
-            local success, isTargetingMe, isTargetingTeam = pcall(function()
-                if UnitIsUnit("player", targetToken) then
-                    return true, false
-                elseif not UnitIsUnit("pet", targetToken) then
-                    if addonTable.IsUnitEngagedWithMyGroup(unit) then
-                        return false, true
-                    end
-                end
-                return false, false
-            end)
-            
-            if success then
-                if isTargetingMe then isTargetingPlayer = true end
-                if isTargetingTeam then isTaunted = true end
-            end
+            local success, isTargetingGroup = pcall(addonTable.IsUnitTargetingGroupMember, unit)
+            if success and isTargetingGroup then isTargetingGroupMember = true end
         end
     end
 
     local isCurrentTarget = isTestFrame
     if not isTestFrame then isCurrentTarget = UnitIsUnit(unit, "target") end
 
-    -- Detect Tank Role Configuration
-    local playerIsTank = false
-    if addonTable.IsPlayerTank and addonTable.IsPlayerTank() then
-        playerIsTank = true
-    else
-        local assignedRole = UnitGroupRolesAssigned and UnitGroupRolesAssigned("player")
-        if assignedRole == "TANK" then playerIsTank = true end
-    end
-
-    -- Track if a tank has completely lost aggro on a taunted mob (Status < 3)
-    local tankLostTauntedAggro = playerIsTank and isTaunted and (status < 3)
+    -- Emphasize mobs attacking teammates when the player is a tank but lacks top threat.
+    local tankLostAggro = playerIsTank and isTargetingGroupMember and status ~= nil and (status < 3)
 
     -- DYNAMIC SIZE SCALE LAYER: Automatically grows 40% larger if you lose aggro!
     local currentScale = currentDB.widgetScale or 1.0
-    if tankLostTauntedAggro then
+    if tankLostAggro then
         frame:SetScale(currentScale * (currentDB.targetScale or 1.35) * 1.40) -- Extra 40% size boost to find the mob!
         frame.text:SetFont(STANDARD_TEXT_FONT, 14, "THICKOUTLINE")
     elseif isCurrentTarget and currentDB.highlightTarget then
@@ -122,52 +98,25 @@ UpdateSingleWidgetData = function(frame, unit)
         frame.text:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
     end
 
-    local targetPercent = 0
-    if isTestFrame then
-        targetPercent = 50
-    else
-        if rawThreatPercentage > 0 then
-            targetPercent = math_floor(rawThreatPercentage)
-            if isTargetingPlayer or status == 3 then
-                if targetPercent < 100 then targetPercent = 100 end
-            end
+    local finalDisplayValue
+    if rawThreatPercentage ~= nil then
+        local targetPercent = math_max(0, math_min(100, rawThreatPercentage))
+        if frame.currentThreatDisplayValue == nil then frame.currentThreatDisplayValue = targetPercent end
+        local diff = targetPercent - frame.currentThreatDisplayValue
+        if (diff > 0.5 or diff < -0.5) then
+            frame.currentThreatDisplayValue = frame.currentThreatDisplayValue + (diff * 0.40)
         else
-            if isTargetingPlayer or status == 3 then
-                targetPercent = 100
-            elseif status == 2 then
-                targetPercent = 90
-            elseif status == 1 then
-                targetPercent = 75
-            else
-                local estimatedBase = EstimateFluidOffTargetThreat(unit, status)
-                if estimatedBase then 
-                    targetPercent = estimatedBase
-                else
-                    local now = GetTime()
-                    if not frame.combatStartTime then frame.combatStartTime = now end
-                    local duration = now - frame.combatStartTime
-                    local timeFactor = (duration / 12)
-                    if timeFactor > 1 then timeFactor = 1 end
-                    targetPercent = math_floor(15 + (timeFactor * 57))
-                end
-            end
+            frame.currentThreatDisplayValue = targetPercent
         end
+        finalDisplayValue = math_floor(frame.currentThreatDisplayValue)
+    else
+        frame.currentThreatDisplayValue = nil
+        displayColor = { 0.75, 0.75, 0.75 }
     end
-
-    if not frame.currentThreatDisplayValue then frame.currentThreatDisplayValue = targetPercent end
-    local diff = targetPercent - frame.currentThreatDisplayValue
-    if (diff > 0.5 or diff < -0.5) then 
-        frame.currentThreatDisplayValue = frame.currentThreatDisplayValue + (diff * 0.20)
-    else 
-        frame.currentThreatDisplayValue = targetPercent 
-    end
-    local finalDisplayValue = math_floor(frame.currentThreatDisplayValue)
 
     -- Assign direct colors arrays cleanly with persistence overrides
-    if not isTestFrame then
-        if playerIsTank and isTaunted then 
-            displayColor = { 0.00, 0.85, 1.00 } -- Persist Taunt Blue even if threat status drops
-        elseif playerIsTank then
+    if not isTestFrame and finalDisplayValue ~= nil then
+        if playerIsTank then
             if status == 3 or finalDisplayValue >= 100 then displayColor = { 0.10, 0.85, 0.10 } -- Good Green
             elseif status == 1 or status == 2 or finalDisplayValue >= 75 then displayColor = { 1.00, 0.55, 0.00 } -- Warn Amber
             else displayColor = { 1.00, 0.10, 0.10 } end -- Bad Red
@@ -178,14 +127,16 @@ UpdateSingleWidgetData = function(frame, unit)
         end
     end
 
-    if playerIsTank and isTaunted then 
-        frame.text:SetText(addonTable.SafeGetText("STATUS_TAUNT")) 
-    else 
-        frame.text:SetText(finalDisplayValue .. "%") 
+    if finalDisplayValue ~= nil then
+        frame.text:SetText(finalDisplayValue .. "%")
+    elseif hasProtectedThreatPercentage then
+        frame.text:SetFormattedText("%.0f%%", protectedThreatPercentage)
+    else
+        frame.text:SetText("--")
     end
 
     if not isTestFrame and status and addonTable.TriggerThreatAudioAlert then
-        addonTable.TriggerThreatAudioAlert(unit, status)
+        addonTable.TriggerThreatAudioAlert(unit, status, currentDB, playerIsTank)
     end
 
     -- ===========================================================================
@@ -207,9 +158,40 @@ UpdateSingleWidgetData = function(frame, unit)
         b = fallbackColor[3]
     end
 
-    -- 1. TEXT LAYER
-    frame.text:SetTextColor(r, g, b, 1.0)
+    -- A protected percentage can still use an accessible threat status for text color.
+    local textR, textG, textB = r, g, b
+    if hasProtectedThreatPercentage and status ~= nil then
+        if status == 3 then
+            if playerIsTank then textR, textG, textB = 0.10, 0.85, 0.10
+            else textR, textG, textB = 1.00, 0.10, 0.10 end
+        elseif status == 1 or status == 2 then
+            textR, textG, textB = 1.00, 0.55, 0.00
+        elseif status == 0 then
+            if playerIsTank then textR, textG, textB = 1.00, 0.10, 0.10
+            else textR, textG, textB = 0.10, 0.85, 0.10 end
+        end
+    end
+    frame.text:SetTextColor(textR, textG, textB, 1.0)
     frame.text:SetAlpha(masterTextAlpha)
+    if frame.wisp then
+        if currentDB.enableGlow then
+            local now = GetTime()
+            local threatStrength = 0.48 + 0.32 * ((finalDisplayValue or 0) / 100)
+            local pulse = 0.85 + 0.15 * math_sin(now * 2.1)
+            if finalDisplayValue == nil then
+                frame.wisp:SetVertexColor(0.25, 0.8, 1)
+            else
+                frame.wisp:SetVertexColor(r, g, b)
+            end
+            frame.wisp:SetAlpha(threatStrength * pulse)
+            frame.wisp:SetRotation(math_sin(now * 0.8) * 0.12)
+            frame.wisp:Show()
+            if frame.wispModel then frame.wispModel:Show() end
+        else
+            frame.wisp:Hide()
+            if frame.wispModel then frame.wispModel:Hide() end
+        end
+    end
 
     -- 2. DUAL-CHANNEL ICON LAYER MATRIX RESOLVER
     if activeTexture then
@@ -262,6 +244,7 @@ function TTP_RefreshAllNameplates()
     
     local localFrameUnitsTracker = {}
     local nameplates = C_NamePlate.GetNamePlates()
+    local context
     
     for i = 1, #nameplates do
         local nameplate = nameplates[i]
@@ -310,7 +293,10 @@ function TTP_RefreshAllNameplates()
                     frame.unit = unit 
                     
                     if not frame:IsShown() then frame:Show() end
-                    UpdateSingleWidgetData(frame, unit)
+                    if not context then
+                        context = { db = currentDB, texture = addonTable.GetActiveTexture(), playerIsTank = IsPlayerTank() }
+                    end
+                    UpdateSingleWidgetData(frame, unit, context)
 
                     -- Offsets are multiplied by the frame's own scale, so divide it out to keep a constant gap
                     local frameScale = frame:GetScale()
@@ -318,6 +304,8 @@ function TTP_RefreshAllNameplates()
                     frame:ClearAllPoints() 
                     local pointFrame = FindRightmostFrame(anchor)
                     frame:SetFrameLevel(anchor:GetFrameLevel() + 20)
+                    if frame.wispModel then frame.wispModel:SetFrameLevel(frame:GetFrameLevel() + 1) end
+                    if frame.textLayer then frame.textLayer:SetFrameLevel(frame:GetFrameLevel() + 2) end
                     frame:SetPoint("LEFT", pointFrame, "RIGHT", (addonTable.BaseOffset + (currentDB.xOffset or 0)) / frameScale, 0) 
 
                 else 
@@ -376,8 +364,8 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
     end
 end)
 
-function addonTable.TriggerThreatAudioAlert(unit, status)
-    local currentDB = addonTable.GetDB()
+function addonTable.TriggerThreatAudioAlert(unit, status, currentDB, playerIsTank)
+    currentDB = currentDB or addonTable.GetDB()
     if not currentDB or not currentDB.enableSound then return end
     
     local now = GetTime()
@@ -385,13 +373,7 @@ function addonTable.TriggerThreatAudioAlert(unit, status)
     local lastPlayed = addonTable.soundCooldowns[unit] or 0
     
     if (now - lastPlayed) >= 3.5 then
-        local playerIsTank = false
-        if addonTable.IsPlayerTank and addonTable.IsPlayerTank() then
-            playerIsTank = true
-        else
-            local assignedRole = UnitGroupRolesAssigned and UnitGroupRolesAssigned("player")
-            if assignedRole == "TANK" then playerIsTank = true end
-        end
+        if playerIsTank == nil then playerIsTank = IsPlayerTank() end
         
         if playerIsTank and status < 3 then
             addonTable.soundCooldowns[unit] = now

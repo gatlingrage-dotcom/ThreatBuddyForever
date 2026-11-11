@@ -1,6 +1,6 @@
 ## Interface: 16001
-## Title: ThreatBuddyForever |cff00ff00V2.0|r
-## Version: 2.2.0
+## Title: ThreatBuddyForever |cff00ff00V2.3.0|r
+## Version: 2.3.0
 ## Author: MeiaDeLeite
 ## Notes: A smart multi-target threat signal light with Tank/DPS auto-inversion, audio alerts, and per-character profiles.
 ## SavedVariables: ThreatBuddyForeverDB

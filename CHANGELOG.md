@@ -7,6 +7,24 @@ All notable changes to **ThreatBuddyForever** will be documented in this file. T
 
 All notable changes to this project are documented in this file.
 
+## - v2.3.0
+## - 2026-11-11
+### 🔧 Fixed
+- **Protected Threat Status Fallback:** Try the separate threat-status API when detailed status is protected or unavailable, allowing threat text colors when that API provides an accessible status. Protected results still remain neutral.
+- **Threat Text Colors:** Color protected percentage text using the accessible threat status when available; retain neutral text when that status is protected or unavailable.
+- **Lighter Updates and Simpler Settings:** Resolve the player role and icon once per nameplate refresh, skip tank-only group-target checks for other roles, and remove duplicate initialization and obsolete internal defaults. Removed the update-frequency slider; existing saved intervals remain in effect, with 0.08 seconds as the default.
+- **Taunt False Positives:** Removed the unsupported inference that an enemy targeting a group member was taunted. Tank aggro-loss emphasis now uses a separate group-target check, and the indicator continues to show the threat percentage.
+- **Character Profile Defaults:** Apply the normal option defaults to the active database profile, including newly created character-specific profiles.
+- **Recycled Widget Threat Initialization:** Reset pooled widgets to an uninitialized threat value so each reused widget starts at the current mob's threat instead of animating from 0%.
+- **Threat Percentage Range and Response:** Removed the 72% ceiling from fallback threat estimates, expanded them to 0–100%, and increased interpolation responsiveness for quicker but still smooth updates.
+- **Threat Data Accuracy:** Read the scaled percentage from `UnitDetailedThreatSituation` (the same field used by other threat displays) instead of treating `UnitThreatSituation`'s missing second return as a percentage. A valid 0% is now kept rather than replaced by an estimate.
+- **Protected Threat Values:** Guard secret threat status and percentage values before calculating with them. Display protected percentages directly in neutral color, or `--` if unavailable; skip status-based alerts and scaling when the status is unavailable.
+- **Simplified Threat Indicator:** Removed the rim, outer glow, and extra text weight/shadow; the Glow option remains available for the animated wisp.
+- **Restored Threat Wisp:** Replaced the square game-texture glow with the earlier transparent orb-and-plume sprite. It pulses and sways, follows accessible threat colors, and uses neutral blue for protected or unavailable percentages.
+- **Darnassus Wisp Model Trial:** Added the game's wisp model (display ID 10045) over the existing sprite, with the percentage drawn above the model. The Glow option controls both layers.
+- **Removed Solid Indicator Backplate:** Removed the opaque square background to keep the indicator clean and let the wisps show through.
+- **Addon Version Metadata:** Updated the runtime, TOC metadata, and options panel to version `2.3.0`.
+
 ## - v2.2.1
 ## - 2026-10-03
 ### 🔧 Fixed
@@ -55,4 +73,3 @@ All notable changes to this project are documented in this file.
 
 ### 🗑️ Removed
 - **Legacy Clutter Pruning:** Stripped out old, bloated background text-bounding box modifiers, bronze bevel frame attachments (`Interface\\Tooltips\\UI-Tooltip-Border`), and style dropdown menus to achieve a pure, high-performance minimalist layout.
-
